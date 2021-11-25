@@ -33,10 +33,4 @@ public class RetryOnFailFnc {
         throw lastException instanceof RuntimeException ? ((RuntimeException) lastException) : new RuntimeException(lastException);
     }
 
-    public static void main(String... args) throws Exception {
-        retry(() -> {
-            System.out.println(5 / 0);
-            return null;
-        }, 5, Exception.class);
-    }
 }
