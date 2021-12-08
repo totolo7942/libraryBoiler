@@ -6,7 +6,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-public class BigFileReader {
+/**
+ * @author a1101381
+ */
+public class BigFileReaderMain {
 
     public static void main(String[] args) throws Exception {
 //        Path sourceNioFile1 = Paths.get("/Users/a1101381/naver_ep" , "v1.0_ep_all_sample_20190508.xml");
