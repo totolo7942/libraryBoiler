@@ -30,8 +30,6 @@ public class LargeFileContextHandler implements CompletionHandler<Integer, Block
         channel.read(buffer, position, done, this);
 
         System.err.println("AsyncFileChannel I/O 진행 중에는 다른 작업도 할 수 있지롱");
-        System.err.println("그동안 그리스에도 다녀오고");
-        System.err.println("크로아티아에도 갔다오자");
 
         done.take();
 
