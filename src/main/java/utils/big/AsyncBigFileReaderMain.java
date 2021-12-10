@@ -2,6 +2,8 @@ package utils.big;
 
 import utils.big.reader.LargeFileContextHandler;
 
+import javax.xml.bind.JAXBException;
+import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
 /**
@@ -10,11 +12,12 @@ import java.io.IOException;
 public class AsyncBigFileReaderMain {
 
     public static void main(String[] args) {
-        final String FILE_NAME="/Users/a1101381/Developer/git/libraryBoiler/src/main/java/utils/big/spilter/BigXmlSpilter.java";
+        final String FILE_NAME_40G="/Users/a1101381/naver_data/naver_ep.xml";
+        final String FILE_NAME_2G="/Users/a1101381/naver_data/naver_ep_2g.xml";
 
         try {
-            new LargeFileContextHandler().read( FILE_NAME);
-        } catch (IOException | InterruptedException e) {
+            new LargeFileContextHandler().read( FILE_NAME_2G);
+        } catch (IOException | InterruptedException | JAXBException | XMLStreamException e) {
             e.printStackTrace();
         }
     }

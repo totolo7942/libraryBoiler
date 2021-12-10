@@ -1,12 +1,19 @@
 package utils.big.reader;
 
+import org.apache.commons.lang3.time.StopWatch;
+
+import javax.xml.bind.JAXBException;
+import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -21,19 +28,37 @@ public class LargeFileContextHandler implements CompletionHandler<Integer, Block
     private AsynchronousFileChannel channel;
     private long position = 0;
     BlockingQueue<Boolean> done = new ArrayBlockingQueue<>(1);
+    private StringBuilder builder = new StringBuilder();
 
-    public void read(String fileName) throws IOException, InterruptedException {
-        buffer = ByteBuffer.allocate(BLOCK_SIZE);
-
+    public void read(String fileName) throws IOException, InterruptedException, JAXBException, XMLStreamException {
         Path path = Paths.get(fileName);
-        channel = AsynchronousFileChannel.open(path);
-        channel.read(buffer, position, done, this);
+//
+        StopWatch stopWatch = new StopWatch();
+        NaverEpParser epParser = new NaverEpParser();
+        stopWatch.reset();
+        stopWatch.start();
+        epParser.staxParser(path);
+        stopWatch.stop();
+        System.out.println("Stax parser : " + stopWatch);
 
-        System.err.println("AsyncFileChannel I/O 진행 중에는 다른 작업도 할 수 있지롱");
 
-        done.take();
+        //line parser
+        stopWatch.reset();
+        stopWatch.start();
+        Scanner sc = new Scanner(FileChannel.open(path, StandardOpenOption.READ));
+        while (sc.hasNext()) {
+            final String readLine = sc.nextLine();
+            epParser.lineParser(readLine);
+        }
+        stopWatch.stop();
+        System.out.println("ReadLine(jsonp) :"+ stopWatch);
 
-        System.out.println("============================== Done");
+        //async file reader
+//        buffer = ByteBuffer.allocate(BLOCK_SIZE);
+//        channel = AsynchronousFileChannel.open(path);
+//        channel.read(buffer, position, done, this);
+//        done.take();
+
     }
 
     @Override
@@ -49,7 +74,10 @@ public class LargeFileContextHandler implements CompletionHandler<Integer, Block
         position += result;
         buffer.flip();
         buffer.mark();
-        System.out.println(" " + position + " >" +Charset.defaultCharset().decode(buffer));
+
+//        System.out.println(" " + position + " >" +Charset.defaultCharset().decode(buffer).toString());
+        builder.append(Charset.defaultCharset().decode(buffer));
+
         buffer.clear();
 
         channel.read(buffer,position, done, this);
