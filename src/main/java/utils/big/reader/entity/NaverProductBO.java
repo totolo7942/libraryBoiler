@@ -12,4 +12,16 @@ public class NaverProductBO {
     private String nvMid;				//네이버 상품번호
     private String mallId;				//몰명
     private long deliveryCost;			//배송비
+
+    @Override
+    public String toString() {
+        return "NaverProductBO{" +
+                "mallPid='" + mallPid + '\'' +
+                ", ranking=" + ranking +
+                ", price=" + price +
+                ", nvMid='" + nvMid + '\'' +
+                ", mallId='" + mallId + '\'' +
+                ", deliveryCost=" + deliveryCost +
+                '}';
+    }
 }

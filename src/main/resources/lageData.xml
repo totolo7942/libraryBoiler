@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <item id="1">
+        <mode>1</mode>
+        <long_desc isprivate="0">
+            <who name="Andy">andy@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext> Setup a project</thetext>
+        </long_desc>
+
+        <long_desc isprivate="0">
+            <who name="Mike">mike@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext>- Setup</thetext>
+        </long_desc>
+        <long_desc isprivate="0">
+            <who name="Gary">gary@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext>project</thetext>
+        </long_desc>
+
+    </item>
+
+    <item id="2">
+        <mode>2</mode>
+        <long_desc isprivate="0">
+            <who name="John">john@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext> Setup a project</thetext>
+        </long_desc>
+
+        <long_desc isprivate="0">
+            <who name="Bill">bill@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext>- Setup</thetext>
+        </long_desc>
+
+        <long_desc isprivate="0">
+            <who name="Rick">rick@ch.ibm.com</who>
+            <bug_when>2001-10-10 21:34:46 -0400</bug_when>
+            <thetext>project</thetext>
+        </long_desc>
+
+    </item>
+</config>

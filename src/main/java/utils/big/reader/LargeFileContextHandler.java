@@ -1,6 +1,8 @@
 package utils.big.reader;
 
 import org.apache.commons.lang3.time.StopWatch;
+import utils.big.reader.entity.NaverModelBO;
+import utils.big.reader.entity.NaverRootBO;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
@@ -13,6 +15,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -37,21 +41,24 @@ public class LargeFileContextHandler implements CompletionHandler<Integer, Block
         NaverEpParser epParser = new NaverEpParser();
         stopWatch.reset();
         stopWatch.start();
-        epParser.staxParser(path);
+
+
+        List<NaverModelBO> modelBOList = epParser.staxParser(path);
         stopWatch.stop();
+        System.out.println("## DONE " + modelBOList.size());
         System.out.println("Stax parser : " + stopWatch);
 
 
         //line parser
-        stopWatch.reset();
-        stopWatch.start();
-        Scanner sc = new Scanner(FileChannel.open(path, StandardOpenOption.READ));
-        while (sc.hasNext()) {
-            final String readLine = sc.nextLine();
-            epParser.lineParser(readLine);
-        }
-        stopWatch.stop();
-        System.out.println("ReadLine(jsonp) :"+ stopWatch);
+//        stopWatch.reset();
+//        stopWatch.start();
+//        Scanner sc = new Scanner(FileChannel.open(path, StandardOpenOption.READ));
+//        while (sc.hasNext()) {
+//            final String readLine = sc.nextLine();
+//            epParser.lineParser(readLine);
+//        }
+//        stopWatch.stop();
+//        System.out.println("ReadLine(jsonp) :"+ stopWatch);
 
         //async file reader
 //        buffer = ByteBuffer.allocate(BLOCK_SIZE);
