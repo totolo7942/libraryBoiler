@@ -24,7 +24,7 @@ import java.util.concurrent.BlockingQueue;
 /**
  * @author a1101381
  */
-public class LargeFileContextHandler implements CompletionHandler<Integer, BlockingQueue<Boolean>> {
+public class XmlFileContextHandler implements CompletionHandler<Integer, BlockingQueue<Boolean>> {
 
     final int BLOCK_SIZE =1024;
 
