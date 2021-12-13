@@ -16,9 +16,9 @@ public class LargeXmlNaverEpReaderMain {
         final String FILE_NAME_2G="/Users/a1101381/naver_data/naver_ep_2g.xml";
         final String FILE_NAME_ONE_DATA ="/Users/a1101381/Develop/totolo7942/git/libraryBoiler/src/main/resources/NaverEp.xml";
         try {
-            new XmlFileContextHandler().read( FILE_NAME_2G);
+            new XmlFileContextHandler().read( FILE_NAME_40G);
 
-            new XmlFileContextHandler().legacyRead(FILE_NAME_2G);
+//            new XmlFileContextHandler().legacyRead(FILE_NAME_2G);
         } catch (IOException | InterruptedException | JAXBException | XMLStreamException e) {
             e.printStackTrace();
         }
