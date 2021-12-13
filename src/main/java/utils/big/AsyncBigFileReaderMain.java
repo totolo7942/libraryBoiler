@@ -17,6 +17,8 @@ public class AsyncBigFileReaderMain {
         final String FILE_NAME_ONE_DATA ="/Users/a1101381/Develop/totolo7942/git/libraryBoiler/src/main/resources/NaverEp.xml";
         try {
             new LargeFileContextHandler().read( FILE_NAME_40G);
+
+            new LargeFileContextHandler().legacyRead(FILE_NAME_2G);
         } catch (IOException | InterruptedException | JAXBException | XMLStreamException e) {
             e.printStackTrace();
         }

@@ -2,7 +2,6 @@ package utils.big.reader;
 
 import org.apache.commons.lang3.time.StopWatch;
 import utils.big.reader.entity.NaverModelBO;
-import utils.big.reader.entity.NaverRootBO;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
@@ -10,14 +9,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
-import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -42,29 +37,30 @@ public class LargeFileContextHandler implements CompletionHandler<Integer, Block
         stopWatch.reset();
         stopWatch.start();
 
-
         List<NaverModelBO> modelBOList = epParser.staxParser(path);
         stopWatch.stop();
-        System.out.println("## DONE " + modelBOList.size());
+        System.out.println("Stax Processing : " + modelBOList.size());
         System.out.println("Stax parser : " + stopWatch);
 
-
-        //line parser
-//        stopWatch.reset();
-//        stopWatch.start();
-//        Scanner sc = new Scanner(FileChannel.open(path, StandardOpenOption.READ));
-//        while (sc.hasNext()) {
-//            final String readLine = sc.nextLine();
-//            epParser.lineParser(readLine);
-//        }
-//        stopWatch.stop();
-//        System.out.println("ReadLine(jsonp) :"+ stopWatch);
 
         //async file reader
 //        buffer = ByteBuffer.allocate(BLOCK_SIZE);
 //        channel = AsynchronousFileChannel.open(path);
 //        channel.read(buffer, position, done, this);
 //        done.take();
+
+    }
+
+    public void legacyRead(String fileName) throws JAXBException {
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.reset();
+        stopWatch.start();
+
+        NaverEpParser epParser = new NaverEpParser();
+        epParser.lineParser(fileName);
+
+        stopWatch.stop();
+        System.out.println("legacyRead parser :"+ stopWatch);
 
     }
 

@@ -1,9 +1,7 @@
 package utils.big.reader;
 
-import utils.big.reader.entity.NaverModelBO;
-import utils.big.reader.entity.NaverProductBO;
-import utils.big.reader.entity.NaverProductListBO;
-import utils.big.reader.entity.NaverRootBO;
+import org.apache.commons.collections4.CollectionUtils;
+import utils.big.reader.entity.*;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -14,6 +12,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -21,129 +21,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
-/**
- * <modelProduct>
- *                 <matchNvMid>24743791013</matchNvMid>
- *                 <modelType>AUTO</modelType>
- *                 <isPopularModel>false</isPopularModel>
- *                 <productName><![CDATA[캠핑 일산화탄소 경보기]]></productName>
- *                 <cateCode>50002711</cateCode>
- *                 <cateName><![CDATA[경보기]]></cateName>
- *                 <fullCateCode><![CDATA[50000008>50000078>50000916>50002711]]></fullCateCode>
- *                 <fullCateName><![CDATA[생활/건강>생활용품>보안용품>경보기]]></fullCateName>
- *                 <lowestPrice>24000</lowestPrice>
- *                 <lowestPriceDevice>ALL</lowestPriceDevice>
- *                 <productCount>9</productCount>
- *                 <useAttr>false</useAttr>
- *                 <lowestProductList>
- *                         <product>
- *                                 <ranking>1</ranking>
- *                                 <price>24000</price>
- *                                 <deliveryCost>2500</deliveryCost>
- *                                 <nvMid>82720695840</nvMid>
- *                                 <mallId>d497fd29f63cde7307837ac0c4ec1efe</mallId>
- *                                 <mallPid>5176174696</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>2</ranking>
- *                                 <price>24000</price>
- *                                 <deliveryCost>2500</deliveryCost>
- *                                 <nvMid>82745742514</nvMid>
- *                                 <mallId>d497fd29f63cde7307837ac0c4ec1efe</mallId>
- *                                 <mallPid>5201220885</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>3</ranking>
- *                                 <price>26560</price>
- *                                 <deliveryCost>3000</deliveryCost>
- *                                 <nvMid>29537186190</nvMid>
- *                                 <mallId>4e31e4cda2225ba8137d1838c7376e7a</mallId>
- *                                 <mallPid>2269824354</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>4</ranking>
- *                                 <price>28130</price>
- *                                 <deliveryCost>3000</deliveryCost>
- *                                 <nvMid>29401037086</nvMid>
- *                                 <mallId>a42de7a7234b5ce136bf1f1e6bcf8f14</mallId>
- *                                 <mallPid>8619803203</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>5</ranking>
- *                                 <price>29610</price>
- *                                 <deliveryCost>3000</deliveryCost>
- *                                 <nvMid>29599815805</nvMid>
- *                                 <mallId>4e31e4cda2225ba8137d1838c7376e7a</mallId>
- *                                 <mallPid>2008220023</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>6</ranking>
- *                                 <price>29900</price>
- *                                 <deliveryCost>2500</deliveryCost>
- *                                 <nvMid>82881639604</nvMid>
- *                                 <mallId>679492594924f01462c4d30b00f0b2f7</mallId>
- *                                 <mallPid>5337146787</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>7</ranking>
- *                                 <price>32000</price>
- *                                 <deliveryCost>3000</deliveryCost>
- *                                 <nvMid>29542790039</nvMid>
- *                                 <mallId>56f986beb01796aeb8338e617bb896de</mallId>
- *                                 <mallPid>1939655983_1939655983</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>8</ranking>
- *                                 <price>35500</price>
- *                                 <deliveryCost>2500</deliveryCost>
- *                                 <nvMid>25855184776</nvMid>
- *                                 <mallId>66a798bfa586f42db59df01e79fd5cdd</mallId>
- *                                 <mallPid>P4807014787</mallPid>
- *                         </product>
- *                         <product>
- *                                 <ranking>9</ranking>
- *                                 <price>35500</price>
- *                                 <deliveryCost>2500</deliveryCost>
- *                                 <nvMid>25626278442</nvMid>
- *                                 <mallId>bc355cd709cb1725161e7129df01095f</mallId>
- *                                 <mallPid>3272499458</mallPid>
- *                         </product>
- *                 </lowestProductList>
- *                 <lowestProductListByMall>
- *                         <product>
- *                                 <price>24000</price>
- *                                 <nvMid>82720695840</nvMid>
- *                                 <mallId>d497fd29f63cde7307837ac0c4ec1efe</mallId>
- *                                 <mallPid>5176174696</mallPid>
- *                         </product>
- *                         <product>
- *                                 <price>26560</price>
- *                                 <nvMid>29537186190</nvMid>
- *                                 <mallId>4e31e4cda2225ba8137d1838c7376e7a</mallId>
- *                                 <mallPid>2269824354</mallPid>
- *                         </product>
- *                         <product>
- *                                 <price>28130</price>
- *                                 <nvMid>29401037086</nvMid>
- *                                 <mallId>a42de7a7234b5ce136bf1f1e6bcf8f14</mallId>
- *                                 <mallPid>8619803203</mallPid>
- *                         </product>
- *                         <product>
- *                                 <price>29900</price>
- *                                 <nvMid>82881639604</nvMid>
- *                                 <mallId>679492594924f01462c4d30b00f0b2f7</mallId>
- *                                 <mallPid>5337146787</mallPid>
- *                         </product>
- *                         <product>
- *                                 <price>32000</price>
- *                                 <nvMid>29542790039</nvMid>
- *                                 <mallId>56f986beb01796aeb8338e617bb896de</mallId>
- *                                 <mallPid>1939655983_1939655983</mallPid>
- *                         </product>
- *                 </lowestProductListByMall>
- *         </modelProduct>
- */
 public class NaverEpParser {
 
     private String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
@@ -152,9 +31,10 @@ public class NaverEpParser {
     private StringBuffer xmlTmpStr = new StringBuffer();
     private StringBuffer xmlElementStr = new StringBuffer();
 
-    public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, FileNotFoundException {
+    public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+//        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
         int eventType = reader.getEventType();
 
         List<NaverProductBO> product = null;
@@ -182,7 +62,6 @@ public class NaverEpParser {
                 }
             }
 
-//            List<String> elementKeys = List.of("ranking", "price", "deliveryCost", "nvMid", "mallId","mallPid");
             if (eventType == XMLEvent.START_ELEMENT) {
                 if(reader.getName().getLocalPart().equals("lowestProductList")) {
                     product = new ArrayList<>();
@@ -259,37 +138,107 @@ public class NaverEpParser {
         return modelBOList;
     }
 
-    public void lineParser(final String buffer ) throws JAXBException {
-        JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+    private JAXBContext jaxbContext = null;
+    private Unmarshaller unmarshaller = null;
+    private BlockingQueue<List<CollectBO>> naverLumpQueue;
+    private int modelFetchSize;
+    private int modelCnt = 0;
+
+
+    public void lineParser(final String fileNamePath ) throws JAXBException {
+        List<CollectBO> resultList = new ArrayList<CollectBO>();
+        boolean isCompleted = true;
+
+        BufferedReader input;
+
         try {
-            String txt = buffer.trim();
-            xmlTmpStr.append(txt);
+            input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), "UTF-8"));
 
-            if(txt.contains("</" + XML_ELEMENT + ">")){
-                if(xmlTmpStr.indexOf(XML_HEADER) <= -1){
-                    xmlElementStr.append(XML_HEADER);
+            jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
+            unmarshaller = jaxbContext.createUnmarshaller();
+
+            while(input.ready()){
+                try {
+                    String txt = input.readLine().trim();
+                    xmlTmpStr.append(txt);
+                    if(txt.indexOf("</"+XML_ELEMENT+">") > -1){
+                        if(xmlTmpStr.indexOf(XML_HEADER) <= -1){
+                            xmlElementStr.append(XML_HEADER);
+                        }
+                        if(xmlTmpStr.indexOf("<"+XML_ROOT+">") <= -1){
+                            xmlElementStr.append("<"+XML_ROOT+">");
+                        }
+                        xmlElementStr.append(xmlTmpStr.toString());
+                        if(xmlTmpStr.indexOf("</"+XML_ROOT+">") <= -1){
+                            xmlElementStr.append("</"+XML_ROOT+">");
+                        }
+                        NaverRootBO root = (NaverRootBO)unmarshaller.unmarshal(new StringReader(xmlElementStr.toString()));
+                        xmlElementStr.delete(0,  xmlElementStr.toString().length());
+                        xmlTmpStr.delete(0,  xmlTmpStr.toString().length());
+
+//                        List<CollectBO> parseCollectBOs = convertCollectBO(root);
+//                        for (CollectBO collectBO : parseCollectBOs) {
+//                            resultList.add(collectBO);
+//                        }
+
+                        if(resultList.size() > 0 && (modelCnt % modelFetchSize) == 0) {
+                            naverLumpQueue.offer(resultList);
+                            resultList = new ArrayList<>();
+                        }
+                    }
+                } catch (Exception e) {
+                    xmlElementStr.delete(0, xmlElementStr.toString().length());
+                    xmlTmpStr.delete(0, xmlTmpStr.toString().length());
                 }
-
-                if(xmlTmpStr.indexOf("<"+XML_ROOT+">") <= -1){
-                    xmlElementStr.append("<"+XML_ROOT+">");
-                }
-
-                xmlElementStr.append(xmlTmpStr.toString());
-
-                if(xmlTmpStr.indexOf("</"+XML_ROOT+">") <= -1){
-                    xmlElementStr.append("</"+XML_ROOT+">");
-                }
-
-                NaverRootBO root = (NaverRootBO)unmarshaller.unmarshal(new StringReader(xmlElementStr.toString()));
-                xmlElementStr.delete(0,  xmlElementStr.toString().length());
-                xmlTmpStr.delete(0,  xmlTmpStr.toString().length());
             }
-        } catch (Exception e) {
+
+            if(resultList.size() > 0){
+                naverLumpQueue.offer(resultList);
+            }
+
+        } catch (Exception e){
+            isCompleted = false;
             e.printStackTrace();
-            xmlElementStr.delete(0, xmlElementStr.toString().length());
-            xmlTmpStr.delete(0, xmlTmpStr.toString().length());
         }
+    }
+
+    public List<CollectBO> convertCollectBO(NaverRootBO naverRootBO){
+        List<CollectBO> resultList = new ArrayList<>();
+        List<NaverModelBO> naverModelBOs = null;
+
+        if(naverRootBO.getModelProduct() != null){
+            naverModelBOs = naverRootBO.getModelProduct();
+
+            for (NaverModelBO naverModelBO : naverModelBOs) {
+                CollectBO collectBO = new CollectBO();
+                collectBO.setPartnerCd("NAVER");
+                collectBO.setModelNo(naverModelBO.getMatchNvMid());
+                collectBO.setModelNm(naverModelBO.getProductName());
+                collectBO.setModelMngTypCd("MANUAL".equals(naverModelBO.getModelType()) ? "01" : "02" );
+
+                if("true".equals(naverModelBO.getUseAttr())){
+                    if(naverModelBO.getAttrList() != null && CollectionUtils.isNotEmpty(naverModelBO.getAttrList().getAttr())){
+                        List<NaverAttrModelBO> naverAttrModelBOs = naverModelBO.getAttrList().getAttr();
+                        for (NaverAttrModelBO naverAttrModelBO : naverAttrModelBOs) {
+                            collectBO.setModelSubNo(naverAttrModelBO.getAttrId());
+                            collectBO.setModelNm(naverModelBO.getProductName() + "^" + naverAttrModelBO.getAttrName());
+
+                            if(naverAttrModelBO.getAttrProductList() != null && CollectionUtils.isNotEmpty(naverAttrModelBO.getAttrProductList().getProduct())){
+                                List<NaverProductBO> productBOs = naverAttrModelBO.getAttrProductList().getProduct();
+//                                setNaverLPInfo(resultList, collectBO, productBOs);
+                            }
+                        }
+                    }
+                }else{
+                    if(naverModelBO.getLowestProductList() != null && CollectionUtils.isNotEmpty(naverModelBO.getLowestProductList().getProduct())){
+                        List<NaverProductBO> productBOs = naverModelBO.getLowestProductList().getProduct();
+//                        setNaverLPInfo(resultList, collectBO, productBOs);
+                    }
+                }
+            }
+        }
+
+        return resultList;
     }
 
     public boolean parser(ByteBuffer buffer) throws IOException, JAXBException {
