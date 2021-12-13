@@ -34,7 +34,7 @@ public class NaverEpParser {
     public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 //        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
-        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep.xml").openConnection().getInputStream());
         int eventType = reader.getEventType();
 
         List<NaverProductBO> product = null;
