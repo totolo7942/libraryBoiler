@@ -33,9 +33,9 @@ public class NaverEpParser {
 
     public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-//        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
-        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
-        int eventType = reader.getEventType();
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+//        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
+//        int eventType = reader.getEventType();
 
         List<NaverProductBO> product = null;
         NaverProductBO productBO = null;
@@ -46,7 +46,7 @@ public class NaverEpParser {
         );
 
         while (reader.hasNext()) {
-            eventType = reader.next();
+            int eventType = reader.next();
 
             if (eventType == XMLEvent.START_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("modelProduct")) {
