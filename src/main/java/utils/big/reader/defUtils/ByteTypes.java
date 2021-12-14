@@ -1,14 +1,19 @@
 package utils.big.reader.defUtils;
 
 public enum ByteTypes {
-    KILO_BYTE(1024), MEGA_BYTE(1024 * 1024), GIGA_BYTE(1024 * 1024 * 1024);
+    KILO_BYTE(1024), MEGA_BYTE(1024 * 1024), GIGA_BYTE(1024 * 1024 * 1024), TERA_BYTE(1024L * 1024 * 1024 * 1024);
 
-    final long value;
-    ByteTypes(int v) {
+
+    private long value;
+    ByteTypes(long v) {
         this.value = v;
     }
 
-    public long toByteValue(int defByte) {
+    public long toByteValue(long defByte) {
         return this.value * defByte;
+    }
+
+    public long toValue() {
+        return this.value;
     }
 }

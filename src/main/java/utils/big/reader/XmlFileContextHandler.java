@@ -33,13 +33,13 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
         Path path = Paths.get(fileName);
 //
         StopWatch stopWatch = new StopWatch();
-        NaverEpParser epParser = new NaverEpParser();
         stopWatch.reset();
         stopWatch.start();
 
-        List<NaverModelBO> modelBOList = epParser.staxParser(path);
+        XmlParseInterface naverEpParser = new NaverEpParserHandler();
+        naverEpParser.parsing(path);
+
         stopWatch.stop();
-        System.out.println("Stax Processing : " + modelBOList.size());
         System.out.println("Stax parser : " + stopWatch);
 
 
@@ -56,7 +56,7 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
         stopWatch.reset();
         stopWatch.start();
 
-        NaverEpParser epParser = new NaverEpParser();
+        NaverEpParserHandler epParser = new NaverEpParserHandler();
         epParser.lineParser(fileName);
 
         stopWatch.stop();

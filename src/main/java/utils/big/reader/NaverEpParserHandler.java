@@ -23,28 +23,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class NaverEpParser {
+public class NaverEpParserHandler extends XmlParseInterface {
 
-    private final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-    private final String XML_ELEMENT = "modelProduct";
     private final StringBuffer xmlTmpStr = new StringBuffer();
-    private final StringBuffer xmlElementStr = new StringBuffer();
-    Map<String, String> elementMaps = new HashMap<>();
+    private Map<String, String> elementMaps = new ConcurrentHashMap<>();
     private int extFileName=0;
 
-    long kilobyte = 1024;
-    long megabyte = kilobyte * 1024;
-    long gigabyte = megabyte * 1024;
-    long terabyte = gigabyte * 1024;
-
-    List<String> constrantKeys = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
+    private final List<String> NAVER_HEADER_ELEMENTS = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
 
 
-
-    public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, IOException {
+    @Override
+    public void parsing(Path path) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
         XMLOutputFactory output = XMLOutputFactory.newInstance();
         XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
@@ -65,7 +58,7 @@ public class NaverEpParser {
         while (reader.hasNext()) {
             int eventType = reader.next();
 
-            ParseBlockSize = parsingXMLHeaderElement(reader, constrantKeys, stringBuilder, ParseBlockSize, eventType);
+            ParseBlockSize = parsingXMLHeaderElement(reader, NAVER_HEADER_ELEMENTS, stringBuilder, ParseBlockSize, eventType);
 
             if (eventType == XMLEvent.START_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("lowestProductList")) {
@@ -91,7 +84,6 @@ public class NaverEpParser {
         if(stringBuilder.length() > 0 )
             nioBufferWriteToFile(stringBuilder);
 
-        return modelBOList;
     }
 
     private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuffer stringBuilder, int ParseBlockSize, int eventType) throws IOException {
@@ -224,8 +216,8 @@ public class NaverEpParser {
 
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
             long fileSize = channel.size();
-            if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
-                int maxByteSize = Math.toIntExact(fileSize / megabyte);
+            if ((fileSize >= ByteTypes.GIGA_BYTE.toValue()) && (fileSize < ByteTypes.TERA_BYTE.toValue())) {
+                int maxByteSize = Math.toIntExact(fileSize / ByteTypes.MEGA_BYTE.toValue());
                 if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(2)) {
                     extFileName += 1;
                     System.out.println("### file seq " + extFileName + " , " + maxByteSize );
@@ -331,12 +323,15 @@ public class NaverEpParser {
 
     private JAXBContext jaxbContext = null;
     private Unmarshaller unmarshaller = null;
-    private BlockingQueue<List<CollectBO>> naverLumpQueue;
-    private int modelFetchSize;
     private int modelCnt = 0;
+    private final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+    private final String XML_ELEMENT = "modelProduct";
+    private final StringBuffer xmlElementStr = new StringBuffer();
+    private int modelFetchSize =0;
+    private BlockingQueue<List<CollectBO>> naverLumpQueue;
 
 
-    public void lineParser(final String fileNamePath ) throws JAXBException {
+    public void lineParser(final String fileNamePath ) {
         List<CollectBO> resultList = new ArrayList<CollectBO>();
         boolean isCompleted = true;
 
