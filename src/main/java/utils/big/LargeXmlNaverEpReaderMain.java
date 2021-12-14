@@ -1,6 +1,7 @@
 package utils.big;
 
 import utils.big.reader.XmlFileContextHandler;
+import utils.big.reader.defUtils.ByteTypes;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
@@ -16,6 +17,9 @@ public class LargeXmlNaverEpReaderMain {
         final String FILE_NAME_2G="/Users/a1101381/naver_data/naver_ep_2g.xml";
         final String FILE_NAME_ONE_DATA ="/Users/a1101381/Develop/totolo7942/git/libraryBoiler/src/main/resources/NaverEp.xml";
         try {
+
+            System.out.println(ByteTypes.KILO_BYTE.toByteValue(3));
+
             new XmlFileContextHandler().read( FILE_NAME_ONE_DATA);
 
 //            new XmlFileContextHandler().legacyRead(FILE_NAME_2G);

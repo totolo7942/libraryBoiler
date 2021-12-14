@@ -1,6 +1,7 @@
 package utils.big.reader;
 
 import org.apache.commons.collections4.CollectionUtils;
+import utils.big.reader.defUtils.ByteTypes;
 import utils.big.reader.entity.*;
 
 import javax.xml.bind.JAXBContext;
@@ -31,10 +32,12 @@ public class NaverEpParser {
     private final StringBuffer xmlElementStr = new StringBuffer();
     Map<String, String> elementMaps = new HashMap<>();
     private int extFileName=0;
+
     long kilobyte = 1024;
     long megabyte = kilobyte * 1024;
     long gigabyte = megabyte * 1024;
     long terabyte = gigabyte * 1024;
+
     List<String> constrantKeys = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
@@ -86,7 +89,7 @@ public class NaverEpParser {
         }
 
         if(stringBuilder.length() > 0 )
-            NioFileWrite(stringBuilder);
+            nioBufferWriteToFile(stringBuilder);
 
         return modelBOList;
     }
@@ -95,8 +98,9 @@ public class NaverEpParser {
         if (eventType == XMLEvent.END_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
                 doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder);
-                if(ParseBlockSize > 80000) {
-                    NioFileWrite(stringBuilder);
+                final int ELEMENT_OVERFLOW_LIMIT_COUNT = 80000;
+                if(ParseBlockSize > ELEMENT_OVERFLOW_LIMIT_COUNT) {
+                    nioBufferWriteToFile(stringBuilder);
                     ParseBlockSize =0;
                     stringBuilder.setLength(0);
                 }
@@ -202,8 +206,7 @@ public class NaverEpParser {
     }
 
 
-    private void NioFileWrite(StringBuffer stringBuilder) throws IOException {
-
+    private void nioBufferWriteToFile(StringBuffer stringBuilder) throws IOException {
         Path path = Paths.get("/Users/a1101381/naver_data/projects_"+extFileName+".xml");
         try {
             path.toFile().createNewFile();
@@ -219,19 +222,15 @@ public class NaverEpParser {
 //            }
 //        }
 
-//        byte[] bytes = stringBuilder.toString().getBytes(StandardCharsets.UTF_8);
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
             long fileSize = channel.size();
             if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
                 int maxByteSize = Math.toIntExact(fileSize / megabyte);
-                if( maxByteSize > 2000) {
+                if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(2)) {
                     extFileName += 1;
                     System.out.println("### file seq " + extFileName + " , " + maxByteSize );
                 }
             }
-//            ByteBuffer buffer = ByteBuffer.wrap(bytes, 0, bytes.length);
-//            channel.write(buffer);
-//            channel.force(true);
         }
 
         BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
@@ -245,7 +244,7 @@ public class NaverEpParser {
 //        fileOut.close();
     }
 
-    private void extracted(List<NaverProductBO> product, List<NaverModelBO> modelBOList) {
+    private void parseHeaderElement(List<NaverProductBO> product, List<NaverModelBO> modelBOList) {
         NaverModelBO modelBO = new NaverModelBO();
         modelBO.setMatchNvMid(elementMaps.get("matchNvMid"));
         modelBO.setModelType(elementMaps.get("modelType"));
