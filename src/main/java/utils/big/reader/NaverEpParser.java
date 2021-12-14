@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,13 @@ public class NaverEpParser {
     private StringBuffer xmlElementStr = new StringBuffer();
     Map<String, String> elementMaps = new HashMap<>();
     private int extFileName=0;
-    StopWatch stopWatch = new StopWatch();
+
+    long kilobyte = 1024;
+    long megabyte = kilobyte * 1024;
+    long gigabyte = megabyte * 1024;
+    long terabyte = gigabyte * 1024;
+
+
 
     public List<NaverModelBO> staxParser(Path path) throws XMLStreamException, IOException, JAXBException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
@@ -42,28 +49,28 @@ public class NaverEpParser {
 //        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
 //        int eventType = reader.getEventType();
 
-        List<NaverProductBO> product = null;
+        List<NaverProductBO> lowProduct = null;
+        List<NaverProductBO> lowProductByMall = null;
         NaverProductBO productBO = null;
         List<NaverModelBO> modelBOList = new ArrayList<>();
         List<String> constrantKeys = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
-                "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAtte"
+                "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
         );
 
-        StringBuilder stringBuilder = new StringBuilder();
+        StringBuffer stringBuilder = new StringBuffer();
 
 
-        int fileseq=1;
+        int mainCategory =0;
+        boolean lowPriceProductMall = false;
+        stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         while (reader.hasNext()) {
             int eventType = reader.next();
 
             if (eventType == XMLEvent.START_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("modelProduct")) {
                     elementMaps = new HashMap<>();
-                    stringBuilder.setLength(0);
                     stringBuilder.append( "<modelProduct>\n");
-                    stopWatch.reset();
-                    stopWatch.start();
-                    fileseq +=1;
+                    mainCategory += 1;
 
                 }
             }
@@ -74,14 +81,24 @@ public class NaverEpParser {
                 if (constrantKeys.contains(elementName)) {
                     final String elementText = reader.getElementText();
                     elementMaps.put(elementName, elementText);
-                    stringBuilder.append( "<"+elementName+">"+ elementText + "</"+elementName+">\n");
+                    if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName"))
+                        stringBuilder.append( "<"+elementName+"><![CDATA["+ elementText + "]]></"+elementName+">\n");
+                    else
+                        stringBuilder.append( "<"+elementName+">"+ elementText + "</"+elementName+">\n");
                 }
             }
 
             if (eventType == XMLEvent.START_ELEMENT) {
                 if(reader.getName().getLocalPart().equals("lowestProductList")) {
-                    product = new ArrayList<>();
+                    lowProduct = new ArrayList<>();
+                    lowPriceProductMall = false;
                 }
+
+                if(reader.getName().getLocalPart().equals("lowestProductListByMall")) {
+                    lowProductByMall = new ArrayList<>();
+                    lowPriceProductMall = true;
+                }
+
 
                 if(reader.getName().getLocalPart().equals("product")) {
                     productBO = new NaverProductBO();
@@ -100,6 +117,11 @@ public class NaverEpParser {
                             productBO.setPrice(Long.parseLong(reader.getText()));
                         }
                         break;
+                    case "nvMid":
+                        eventType = reader.next();
+                        if(eventType == XMLEvent.CHARACTERS) {
+                            productBO.setNvMid(reader.getText());
+                        }
                     case "deliveryCost":
                         eventType = reader.next();
                         if (eventType == XMLEvent.CHARACTERS) {
@@ -116,7 +138,11 @@ public class NaverEpParser {
                         eventType = reader.next();
                         if (eventType == XMLEvent.CHARACTERS) {
                             productBO.setMallPid(reader.getText());
-                            product.add(productBO);
+                            if(lowPriceProductMall) {
+                                lowProductByMall.add(productBO);
+                            }else {
+                                lowProduct.add(productBO);
+                            }
                         }
                         break;
                 }
@@ -124,10 +150,8 @@ public class NaverEpParser {
 
             if (eventType == XMLEvent.END_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("modelProduct")) {
-//                    extracted(product, modelBOList);
-                    stringBuilder.append( "<lowestProductList>\n");
-
-                    for( NaverProductBO productBO1 : product) {
+                    stringBuilder.append( "\t<lowestProductList>\n");
+                    for( NaverProductBO productBO1 : lowProduct) {
                         stringBuilder.append( "\t\t<product>\n");
                         stringBuilder.append( "\t\t\t<ranking>"+ productBO1.getRanking() + "</ranking>\n");
                         stringBuilder.append( "\t\t\t<price>"+ productBO1.getPrice() + "</price>\n");
@@ -138,45 +162,79 @@ public class NaverEpParser {
                         stringBuilder.append( "\t\t</product>\n");
                     }
                     stringBuilder.append( "\t</lowestProductList>\n");
+
+                    stringBuilder.append( "<lowestProductListByMall>\n");
+                    for( NaverProductBO productBO1 : lowProductByMall) {
+                        stringBuilder.append( "\t\t<product>\n");
+                        stringBuilder.append( "\t\t\t<ranking>"+ productBO1.getRanking() + "</ranking>\n");
+                        stringBuilder.append( "\t\t\t<price>"+ productBO1.getPrice() + "</price>\n");
+                        stringBuilder.append( "\t\t\t<deliveryCost>"+ productBO1.getDeliveryCost() + "</deliveryCost>\n");
+                        stringBuilder.append( "\t\t\t<nvMid>"+ productBO1.getNvMid() + "</nvMid>\n");
+                        stringBuilder.append( "\t\t\t<mallId>"+ productBO1.getMallId() + "</mallId>\n");
+                        stringBuilder.append( "\t\t\t<mallPid>"+ productBO1.getMallPid() + "</mallPid>\n");
+                        stringBuilder.append( "\t\t</product>\n");
+                    }
+                    stringBuilder.append( "\t</lowestProductListByMall>\n");
+
                     stringBuilder.append( "</modelProduct>\n");
 
-                    if(fileseq > 0) {
+                    if(mainCategory > 80000) {
                         NioFileWrite(stringBuilder, "/Users/a1101381/naver_data/projects");
-                        fileseq = 0;
+                        mainCategory =0;
+                        stringBuilder.setLength(0);
                     }
                 }
             }
         }
-//        product.forEach(NaverProductBO::toString);
+
+        if(stringBuilder.length() > 0 )
+            NioFileWrite(stringBuilder, "/Users/a1101381/naver_data/projects");
+
         return modelBOList;
     }
 
-    long kilobyte = 1024;
-    long megabyte = kilobyte * 1024;
-    long gigabyte = megabyte * 1024;
-    long terabyte = gigabyte * 1024;
 
-    private void NioFileWrite(StringBuilder stringBuilder, String defaultFileName) throws IOException {
+    private void NioFileWrite(StringBuffer stringBuilder, String defaultFileName) throws IOException {
 
         Path path = Paths.get("/Users/a1101381/naver_data/projects_"+extFileName+".xml");
         try {
             path.toFile().createNewFile();
             Files.createDirectories(path.getParent());
-        }catch(Exception e ) {}
+        }catch(Exception ignored) {}
 
-        long fileSize = Files.size(path);
-        if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
-            int maxByteSize = Math.toIntExact(fileSize / megabyte);
-            if( maxByteSize > 2000) {
-                extFileName += 1;
-                stopWatch.stop();
-                System.out.println("### file seq " + extFileName + " , " + maxByteSize + " = " + stopWatch);
+//        long fileSize = Files.size(path);
+//        if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
+//            int maxByteSize = Math.toIntExact(fileSize / megabyte);
+//            if( maxByteSize > 2000) {
+//                extFileName += 1;
+//                System.out.println("### file seq " + extFileName + " , " + maxByteSize );
+//            }
+//        }
+
+//        byte[] bytes = stringBuilder.toString().getBytes(StandardCharsets.UTF_8);
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+            long fileSize = channel.size();
+            if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
+                int maxByteSize = Math.toIntExact(fileSize / megabyte);
+                if( maxByteSize > 2000) {
+                    extFileName += 1;
+                    System.out.println("### file seq " + extFileName + " , " + maxByteSize );
+                }
             }
+//            ByteBuffer buffer = ByteBuffer.wrap(bytes, 0, bytes.length);
+//            channel.write(buffer);
+//            channel.force(true);
         }
 
-        FileChannel fileOut = new FileOutputStream(path.toFile(), true).getChannel();
-        fileOut.write(ByteBuffer.wrap(stringBuilder.toString().getBytes(StandardCharsets.UTF_8)));
-        fileOut.close();
+        BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        bufferedWriter.write(stringBuilder.toString());
+        bufferedWriter.flush();
+        bufferedWriter.close();
+
+        //Stax parser : 0:11:14.460 write 방식
+//        FileChannel fileOut = new FileOutputStream(path.toFile(), true).getChannel();
+//        fileOut.write(ByteBuffer.wrap(stringBuilder.toString().getBytes(StandardCharsets.UTF_8)));
+//        fileOut.close();
     }
 
     private void extracted(List<NaverProductBO> product, List<NaverModelBO> modelBOList) {
