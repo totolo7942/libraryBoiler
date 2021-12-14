@@ -14,11 +14,11 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,8 +82,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
             ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, stringBuilder, ParseBlockSize, eventType);
         }
 
-        if(stringBuilder.length() > 0 )
+        if(stringBuilder.length() > 0 ) {
             nioBufferWriteToFile(stringBuilder);
+        }
 
     }
 
@@ -146,6 +147,8 @@ public class NaverEpParserHandler extends XmlParseInterface {
                         }
                     }
                     break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + reader.getName().getLocalPart());
             }
         }
     }
@@ -321,13 +324,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
 //        }
     }
 
-    private JAXBContext jaxbContext = null;
-    private Unmarshaller unmarshaller = null;
-    private int modelCnt = 0;
     private final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
     private final String XML_ELEMENT = "modelProduct";
-    private final StringBuffer xmlElementStr = new StringBuffer();
-    private int modelFetchSize =0;
+    private final ThreadLocal<StringBuffer> xmlElementStr = ThreadLocal.withInitial(StringBuffer::new);
     private BlockingQueue<List<CollectBO>> naverLumpQueue;
 
 
@@ -338,10 +337,10 @@ public class NaverEpParserHandler extends XmlParseInterface {
         BufferedReader input;
 
         try {
-            input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), "UTF-8"));
+            input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), StandardCharsets.UTF_8));
 
-            jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
-            unmarshaller = jaxbContext.createUnmarshaller();
+            JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 
             while(input.ready()){
                 try {
@@ -349,18 +348,18 @@ public class NaverEpParserHandler extends XmlParseInterface {
                     xmlTmpStr.append(txt);
                     if(txt.indexOf("</"+XML_ELEMENT+">") > -1){
                         if(xmlTmpStr.indexOf(XML_HEADER) <= -1){
-                            xmlElementStr.append(XML_HEADER);
+                            xmlElementStr.get().append(XML_HEADER);
                         }
                         String XML_ROOT = "modelProductList";
                         if(xmlTmpStr.indexOf("<"+ XML_ROOT +">") <= -1){
-                            xmlElementStr.append("<"+ XML_ROOT +">");
+                            xmlElementStr.get().append("<"+ XML_ROOT +">");
                         }
-                        xmlElementStr.append(xmlTmpStr.toString());
+                        xmlElementStr.get().append(xmlTmpStr);
                         if(xmlTmpStr.indexOf("</"+ XML_ROOT +">") <= -1){
-                            xmlElementStr.append("</"+ XML_ROOT +">");
+                            xmlElementStr.get().append("</"+ XML_ROOT +">");
                         }
-                        NaverRootBO root = (NaverRootBO)unmarshaller.unmarshal(new StringReader(xmlElementStr.toString()));
-                        xmlElementStr.delete(0,  xmlElementStr.toString().length());
+                        NaverRootBO root = (NaverRootBO) unmarshaller.unmarshal(new StringReader(xmlElementStr.toString()));
+                        xmlElementStr.get().delete(0,  xmlElementStr.toString().length());
                         xmlTmpStr.delete(0,  xmlTmpStr.toString().length());
 
 //                        List<CollectBO> parseCollectBOs = convertCollectBO(root);
@@ -368,13 +367,15 @@ public class NaverEpParserHandler extends XmlParseInterface {
 //                            resultList.add(collectBO);
 //                        }
 
+                        int modelFetchSize = 0;
+                        int modelCnt = 0;
                         if(resultList.size() > 0 && (modelCnt % modelFetchSize) == 0) {
                             naverLumpQueue.offer(resultList);
                             resultList = new ArrayList<>();
                         }
                     }
                 } catch (Exception e) {
-                    xmlElementStr.delete(0, xmlElementStr.toString().length());
+                    xmlElementStr.get().delete(0, xmlElementStr.toString().length());
                     xmlTmpStr.delete(0, xmlTmpStr.toString().length());
                 }
             }
@@ -443,31 +444,35 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
                 if(txt.contains("</" + XML_ELEMENT + ">")){
                     if(xmlTmpStr.indexOf(XML_HEADER) <= -1){
-                        xmlElementStr.append(XML_HEADER);
+                        xmlElementStr.get().append(XML_HEADER);
                     }
 //                    if(xmlTmpStr.indexOf("<"+XML_ROOT+">") <= -1){
 //                        xmlElementStr.append("<"+XML_ROOT+">");
 //                    }
-                    xmlElementStr.append(xmlTmpStr.toString());
+                    xmlElementStr.get().append(xmlTmpStr);
 //                    if(xmlTmpStr.indexOf("</"+XML_ROOT+">") <= -1){
 //                        xmlElementStr.append("</"+XML_ROOT+">");
 //                    }
 
-                    System.out.println("## to string " + xmlElementStr.toString());
+                    System.out.println("## to string " + xmlElementStr);
                     NaverRootBO root = (NaverRootBO)unmarshaller.unmarshal(new StringReader(xmlElementStr.toString()));
 
                     System.out.println("## to size " + root.getModelProduct().size());
 
-                    xmlElementStr.delete(0,  xmlElementStr.toString().length());
+                    xmlElementStr.get().delete(0,  xmlElementStr.toString().length());
                     xmlTmpStr.delete(0,  xmlTmpStr.toString().length());
                 }
             } catch (Exception e) {
-                xmlElementStr.delete(0, xmlElementStr.toString().length());
+                xmlElementStr.get().delete(0, xmlElementStr.toString().length());
                 xmlTmpStr.delete(0, xmlTmpStr.toString().length());
             }
         }
 
         return true;
+    }
+
+    public void setNaverLumpQueue(BlockingQueue<List<CollectBO>> naverLumpQueue) {
+        this.naverLumpQueue = naverLumpQueue;
     }
 }
 
@@ -479,6 +484,7 @@ class ByteBufferBackedInputStream extends InputStream {
         this.buf = buf;
     }
 
+    @Override
     public synchronized int read() throws IOException {
         if (!buf.hasRemaining()) {
             return -1;

@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class RetryOnFailFncTest {
 
-
-
     @Test
     void test_ntry_exception(){
         assertThrows(Exception.class , this::extracted);

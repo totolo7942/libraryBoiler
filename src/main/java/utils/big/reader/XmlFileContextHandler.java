@@ -27,7 +27,7 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
     private AsynchronousFileChannel channel;
     private long position = 0;
     BlockingQueue<Boolean> done = new ArrayBlockingQueue<>(1);
-    private StringBuilder builder = new StringBuilder();
+    private final StringBuilder builder = new StringBuilder();
 
     public void read(String fileName) throws IOException, InterruptedException, JAXBException, XMLStreamException {
         Path path = Paths.get(fileName);
