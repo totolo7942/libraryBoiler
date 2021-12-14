@@ -29,6 +29,12 @@ dependencies {
 
     //legacy
     implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
+    implementation group: 'com.jamesmurty.utils', name: 'java-xmlbuilder', version: '1.3'
+
+
+    //json
+    implementation 'com.google.code.gson:gson:2.8.9'
+
 
 }
 
