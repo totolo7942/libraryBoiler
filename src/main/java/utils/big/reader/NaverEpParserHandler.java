@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -199,10 +200,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
 
     private void nioBufferWriteToFile(StringBuffer stringBuilder) throws IOException {
-        Path path = Paths.get("/Users/a1101381/naver_data/projects_"+extFileName+".xml");
+        Path path = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
         try {
-            path.toFile().createNewFile();
-            Files.createDirectories(path.getParent());
+            Files.createFile(path);
         }catch(Exception ignored) {}
 
 //        long fileSize = Files.size(path);
