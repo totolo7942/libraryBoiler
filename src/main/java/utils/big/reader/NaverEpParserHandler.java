@@ -1,6 +1,7 @@
 package utils.big.reader;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import utils.big.reader.defUtils.ByteTypes;
 import utils.big.reader.entity.*;
 
@@ -32,6 +33,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
     private Map<String, String> elementMaps = new ConcurrentHashMap<>();
     private int extFileName=0;
 
+    StopWatch stopWatch = new StopWatch();
+
+
     private final List<String> NAVER_HEADER_ELEMENTS = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
@@ -56,6 +60,10 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
         int ParseBlockSize =0;
         boolean lowPriceProductMall = false;
+
+        stopWatch.reset();
+        stopWatch.start();
+
 
         while (reader.hasNext()) {
             int eventType = reader.next();
@@ -93,9 +101,15 @@ public class NaverEpParserHandler extends XmlParseInterface {
         if (eventType == XMLEvent.END_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
                 doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder);
-                final int ELEMENT_OVERFLOW_LIMIT_COUNT = 80000;
+
+                final int ELEMENT_OVERFLOW_LIMIT_COUNT = 50000;
                 if(ParseBlockSize > ELEMENT_OVERFLOW_LIMIT_COUNT) {
+                    stopWatch.reset();
+                    stopWatch.start();
                     nioBufferWriteToFile(stringBuilder);
+                    stopWatch.stop();
+                    System.out.println("append build : " + stopWatch);
+
                     ParseBlockSize =0;
                     stringBuilder.setLength(0);
                 }
@@ -168,7 +182,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 final String elementText = reader.getElementText();
                 elementMaps.put(elementName, elementText);
                 if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName"))
-                    stringBuilder.append("<"+elementName+"><![CDATA[").append(elementText).append("]]></").append(elementName).append(">\n");
+                    stringBuilder.append("<"+elementName+"><![CDATA["+elementText+"]]></"+elementName+">\n");
                 else
                     stringBuilder.append( "<"+elementName+">"+ elementText + "</"+elementName+">\n");
             }
@@ -188,15 +202,15 @@ public class NaverEpParserHandler extends XmlParseInterface {
         stringBuilder.append( "</modelProduct>\n");
     }
 
-    private void lowPriceProductParsing(StringBuffer stringBuilder,  List<? extends NaverProductBO> products) {
+    private void lowPriceProductParsing(StringBuffer stringBuilder,  List<NaverProductBO> products) {
         for( NaverProductBO product : products) {
             stringBuilder.append("\t\t<product>\n");
-            stringBuilder.append("\t\t\t<ranking>").append(product.getRanking()).append("</ranking>\n");
-            stringBuilder.append("\t\t\t<price>").append(product.getPrice()).append("</price>\n");
-            stringBuilder.append("\t\t\t<deliveryCost>").append(product.getDeliveryCost()).append("</deliveryCost>\n");
-            stringBuilder.append("\t\t\t<nvMid>").append(product.getNvMid()).append("</nvMid>\n");
-            stringBuilder.append("\t\t\t<mallId>").append(product.getMallId()).append("</mallId>\n");
-            stringBuilder.append("\t\t\t<mallPid>").append(product.getMallPid()).append("</mallPid>\n");
+            stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
+            stringBuilder.append("\t\t\t<price>"+product.getPrice()+"</price>\n");
+            stringBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
+            stringBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
+            stringBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
+            stringBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
             stringBuilder.append("\t\t</product>\n");
         }
     }
