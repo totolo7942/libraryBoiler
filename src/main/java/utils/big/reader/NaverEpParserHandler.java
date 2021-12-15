@@ -49,7 +49,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
         List<NaverProductBO> lowProductByMall = null;
         NaverProductBO productBO = null;
 
+
         StringBuffer stringBuilder = new StringBuffer();
+        Map<String, String> elementMaps = new HashMap<>();
         stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
         int ParseBlockSize =0;
@@ -166,9 +168,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 final String elementText = reader.getElementText();
                 elementMaps.put(elementName, elementText);
                 if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName"))
-                    stringBuilder.append("<").append(elementName).append("><![CDATA[").append(elementText).append("]]></").append(elementName).append(">\n");
+                    stringBuilder.append("<"+elementName+"><![CDATA[").append(elementText).append("]]></").append(elementName).append(">\n");
                 else
-                    stringBuilder.append("<").append(elementName).append(">").append(elementText).append("</").append(elementName).append(">\n");
+                    stringBuilder.append( "<"+elementName+">"+ elementText + "</"+elementName+">\n");
             }
         }
         return mainCategory;
