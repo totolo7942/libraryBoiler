@@ -23,7 +23,7 @@ public class LargeXmlNaverEpReaderMain {
             warmUpCleanDirectoryFiles();
 
             new XmlFileContextHandler().read( FILE_NAME_2G);
-            new XmlFileContextHandler().legacyRead(FILE_NAME_2G);
+//            new XmlFileContextHandler().legacyRead(FILE_NAME_2G);
         } catch (IOException | InterruptedException | JAXBException | XMLStreamException e) {
             e.printStackTrace();
         }

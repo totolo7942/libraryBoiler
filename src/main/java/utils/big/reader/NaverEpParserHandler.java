@@ -35,7 +35,6 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
     StopWatch stopWatch = new StopWatch();
 
-
     private final List<String> NAVER_HEADER_ELEMENTS = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
@@ -54,8 +53,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
         NaverProductBO productBO = null;
 
 
-        StringBuffer stringBuilder = new StringBuffer();
-        Map<String, String> elementMaps = new HashMap<>();
+//        StringBuffer stringBuilder = new StringBuffer();
+        StringBuilder stringBuilder = new StringBuilder();
+//        Map<String, String> elementMaps = new HashMap<>();
         stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
         int ParseBlockSize =0;
@@ -97,12 +97,12 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
     }
 
-    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuffer stringBuilder, int ParseBlockSize, int eventType) throws IOException {
+    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, int ParseBlockSize, int eventType) throws IOException {
         if (eventType == XMLEvent.END_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
                 doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder);
 
-                final int ELEMENT_OVERFLOW_LIMIT_COUNT = 50000;
+                final int ELEMENT_OVERFLOW_LIMIT_COUNT = 5000; //Time:0:00:28.060, 40G:0:08:47.128
                 if(ParseBlockSize > ELEMENT_OVERFLOW_LIMIT_COUNT) {
                     stopWatch.reset();
                     stopWatch.start();
@@ -167,10 +167,10 @@ public class NaverEpParserHandler extends XmlParseInterface {
         }
     }
 
-    private int parsingXMLHeaderElement(XMLStreamReader reader, List<String> constrantKeys, StringBuffer stringBuilder, int mainCategory, int eventType) throws XMLStreamException {
+    private int parsingXMLHeaderElement(XMLStreamReader reader, List<String> constrantKeys, StringBuilder stringBuilder, int mainCategory, int eventType) throws XMLStreamException {
         if (eventType == XMLEvent.START_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
-                elementMaps = new HashMap<>();
+//                elementMaps = new HashMap<>();
                 stringBuilder.append( "<modelProduct>\n");
                 mainCategory += 1;
             }
@@ -180,7 +180,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
             String elementName = reader.getLocalName();
             if (constrantKeys.contains(elementName)) {
                 final String elementText = reader.getElementText();
-                elementMaps.put(elementName, elementText);
+//                elementMaps.put(elementName, elementText);
                 if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName"))
                     stringBuilder.append("<"+elementName+"><![CDATA["+elementText+"]]></"+elementName+">\n");
                 else
@@ -190,7 +190,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         return mainCategory;
     }
 
-    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuffer stringBuilder) {
+    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder) {
         stringBuilder.append( "\t<lowestProductList>\n");
         lowPriceProductParsing(stringBuilder, lowProduct);
         stringBuilder.append( "\t</lowestProductList>\n");
@@ -202,7 +202,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         stringBuilder.append( "</modelProduct>\n");
     }
 
-    private void lowPriceProductParsing(StringBuffer stringBuilder,  List<NaverProductBO> products) {
+    private void lowPriceProductParsing(StringBuilder stringBuilder,  List<NaverProductBO> products) {
         for( NaverProductBO product : products) {
             stringBuilder.append("\t\t<product>\n");
             stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
@@ -220,7 +220,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
 //    long gigabyte = megabyte * 1024;
 //    long terabyte = gigabyte * 1024;
 
-    private void nioBufferWriteToFile(StringBuffer stringBuilder) throws IOException {
+    private void nioBufferWriteToFile(StringBuilder stringBuilder) throws IOException {
         Path path = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
         try {
             Files.createFile(path);
@@ -246,10 +246,10 @@ public class NaverEpParserHandler extends XmlParseInterface {
             }
         }
         Path wpath = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
-        BufferedWriter bufferedWriter = Files.newBufferedWriter(wpath, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        bufferedWriter.write(stringBuilder.toString());
-        bufferedWriter.flush();
-        bufferedWriter.close();
+        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(wpath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            bufferedWriter.write(stringBuilder.toString());
+            bufferedWriter.flush();
+        }
 
         //Stax parser : 0:11:14.460 write 방식
 //        FileChannel fileOut = new FileOutputStream(path.toFile(), true).getChannel();
