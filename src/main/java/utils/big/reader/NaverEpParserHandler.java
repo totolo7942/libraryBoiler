@@ -48,7 +48,6 @@ public class NaverEpParserHandler extends XmlParseInterface {
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
         NaverProductBO productBO = null;
-        List<NaverModelBO> modelBOList = new ArrayList<>();
 
         StringBuffer stringBuilder = new StringBuffer();
         stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -100,6 +99,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 }
             }
         }
+
         return ParseBlockSize;
     }
 
@@ -147,8 +147,6 @@ public class NaverEpParserHandler extends XmlParseInterface {
                         }
                     }
                     break;
-                default:
-                    throw new IllegalStateException("Unexpected value: " + reader.getName().getLocalPart());
             }
         }
     }
@@ -201,6 +199,10 @@ public class NaverEpParserHandler extends XmlParseInterface {
         }
     }
 
+//    long kilobyte = 1024;
+//    long megabyte = kilobyte * 1024;
+//    long gigabyte = megabyte * 1024;
+//    long terabyte = gigabyte * 1024;
 
     private void nioBufferWriteToFile(StringBuffer stringBuilder) throws IOException {
         Path path = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
@@ -211,7 +213,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
 //        long fileSize = Files.size(path);
 //        if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
 //            int maxByteSize = Math.toIntExact(fileSize / megabyte);
-//            if( maxByteSize > 2000) {
+//            if( maxByteSize > 1000) {
 //                extFileName += 1;
 //                System.out.println("### file seq " + extFileName + " , " + maxByteSize );
 //            }
@@ -221,14 +223,14 @@ public class NaverEpParserHandler extends XmlParseInterface {
             long fileSize = channel.size();
             if ((fileSize >= ByteTypes.GIGA_BYTE.toValue()) && (fileSize < ByteTypes.TERA_BYTE.toValue())) {
                 int maxByteSize = Math.toIntExact(fileSize / ByteTypes.MEGA_BYTE.toValue());
-                if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(2)) {
+                if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(1) / ByteTypes.MEGA_BYTE.toValue()) {
                     extFileName += 1;
                     System.out.println("### file seq " + extFileName + " , " + maxByteSize );
                 }
             }
         }
-
-        BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        Path wpath = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
+        BufferedWriter bufferedWriter = Files.newBufferedWriter(wpath, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         bufferedWriter.write(stringBuilder.toString());
         bufferedWriter.flush();
         bufferedWriter.close();
