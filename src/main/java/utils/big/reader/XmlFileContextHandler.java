@@ -39,8 +39,6 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
 
         XmlParseInterface naverEpParser = new NaverEpParserHandler();
         naverEpParser.parsing(path, stringBuilder);
-
-        stringBuilder.append("</modelProductList>\n");
         stopWatch.stop();
         System.out.println("Stax parser : " + stopWatch);
 

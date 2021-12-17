@@ -38,18 +38,19 @@ public class NaverEpParserHandler extends XmlParseInterface {
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
 
+    private final List<String> NAVER_HEADER_ATTR_ELEMENTS = List.of("attrName", "attrId", "attrLowestPrice", "attrProductCount");
+
 
     @Override
     public void parsing(Path path, StringBuilder stringBuilder) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-        XMLOutputFactory output = XMLOutputFactory.newInstance();
         XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
 //        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://localhost:8083/naver_ep_2g.xml").openConnection().getInputStream());
 //        int eventType = reader.getEventType();
 
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
-        List<NaverAttrModelBO> attrListAttr = null;
+        List<NaverProductBO> attrListAttr = null;
         NaverProductBO productBO = null;
 
 
@@ -66,7 +67,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         while (reader.hasNext()) {
             int eventType = reader.next();
 
-            ParseBlockSize = parsingXMLHeaderElement(reader, NAVER_HEADER_ELEMENTS, stringBuilder, ParseBlockSize, eventType);
+            ParseBlockSize = parsingXMLHeaderElement(reader, NAVER_HEADER_ELEMENTS, stringBuilder, ParseBlockSize, eventType, NAVER_HEADER_ATTR_ELEMENTS);
 
             /**
              * 	private NaverProductListBO lowestProductList;
@@ -80,14 +81,14 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 if (reader.getName().getLocalPart().equals("attrProductList")) {
                     attrListAttr = new ArrayList<>();
                     flag_attrList = true;
-                    lowPriceProductMall = false;
+                    lowPriceProductMall=false;
                 }
 
 
                 if (reader.getName().getLocalPart().equals("lowestProductList")) {
                     lowProduct = new ArrayList<>();
-                    lowPriceProductMall = false;
                     flag_attrList = false;
+                    lowPriceProductMall=false;
                 }
 
                 if (reader.getName().getLocalPart().equals("lowestProductListByMall")) {
@@ -101,21 +102,22 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 }
             }
 
-            parsingXMLBodyElements(reader, lowProduct, lowPriceProductMall, lowProductByMall, productBO, eventType);
+            parsingXMLBodyElements(reader, lowProduct, lowPriceProductMall, lowProductByMall, productBO, eventType, flag_attrList, attrListAttr);
 
-            ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, stringBuilder, ParseBlockSize, eventType);
+            ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, stringBuilder, ParseBlockSize, eventType, attrListAttr);
         }
 
         if(stringBuilder.length() > 0 ) {
+            stringBuilder.append("</modelProductList>\n");
             nioBufferWriteToFile(stringBuilder);
         }
 
     }
 
-    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, int ParseBlockSize, int eventType) throws IOException {
+    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, int ParseBlockSize, int eventType, List<NaverProductBO> attrListAttr) throws IOException {
         if (eventType == XMLEvent.END_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
-                doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder);
+                doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder, attrListAttr);
 
                 final int ELEMENT_OVERFLOW_LIMIT_COUNT = 5000; //Time:0:00:28.060, 40G:0:08:47.128
                 if(ParseBlockSize > ELEMENT_OVERFLOW_LIMIT_COUNT) {
@@ -134,7 +136,8 @@ public class NaverEpParserHandler extends XmlParseInterface {
         return ParseBlockSize;
     }
 
-    private void parsingXMLBodyElements(XMLStreamReader reader, List<NaverProductBO> lowProduct, boolean lowPriceProductMall, List<NaverProductBO> lowProductByMall, NaverProductBO productBO, int eventType) throws XMLStreamException {
+    private void parsingXMLBodyElements(XMLStreamReader reader, List<NaverProductBO> lowProduct, boolean lowPriceProductMall, List<NaverProductBO> lowProductByMall, NaverProductBO productBO, int eventType,
+                                        boolean flag_attrList, List<NaverProductBO> attrListAttr) throws XMLStreamException {
 
         if (eventType == XMLEvent.START_ELEMENT) {
             switch (reader.getName().getLocalPart()) {
@@ -173,7 +176,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
                         productBO.setMallPid(reader.getText());
                         if(lowPriceProductMall) {
                             lowProductByMall.add(productBO);
-                        }else {
+                        }else if ( flag_attrList ) {
+                            attrListAttr.add(productBO);
+                        } else{
                             lowProduct.add(productBO);
                         }
                     }
@@ -182,10 +187,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
         }
     }
 
-    private int parsingXMLHeaderElement(XMLStreamReader reader, List<String> constrantKeys, StringBuilder stringBuilder, int mainCategory, int eventType) throws XMLStreamException {
+    private int parsingXMLHeaderElement(XMLStreamReader reader, List<String> constrantKeys, StringBuilder stringBuilder, int mainCategory, int eventType, List<String> attrKeysList) throws XMLStreamException {
         if (eventType == XMLEvent.START_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
-//                elementMaps = new HashMap<>();
                 stringBuilder.append( "<modelProduct>\n");
                 mainCategory += 1;
             }
@@ -195,23 +199,54 @@ public class NaverEpParserHandler extends XmlParseInterface {
             String elementName = reader.getLocalName();
             if (constrantKeys.contains(elementName)) {
                 final String elementText = reader.getElementText();
-//                elementMaps.put(elementName, elementText);
                 if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName"))
-                    stringBuilder.append("<"+elementName+"><![CDATA["+elementText+"]]></"+elementName+">\n");
+                    stringBuilder.append("\t<"+elementName+"><![CDATA["+elementText+"]]></"+elementName+">\n");
                 else
-                    stringBuilder.append( "<"+elementName+">"+ elementText + "</"+elementName+">\n");
+                    stringBuilder.append( "\t<"+elementName+">"+ elementText + "</"+elementName+">\n");
             }
         }
+
+        //AttrList Parsing
+        if (eventType == XMLEvent.START_ELEMENT) {
+            if (reader.getName().getLocalPart().equals("attrList")) {
+                stringBuilder.append( "\t<attrList>\n");
+                stringBuilder.append( "\t\t<attr>\n");
+            }
+        }
+
+        if (eventType == XMLStreamConstants.START_ELEMENT) {
+            String elementName = reader.getLocalName();
+            if (attrKeysList.contains(elementName)) {
+                final String elementText = reader.getElementText();
+                if(elementName.equals("attrName"))
+                    stringBuilder.append("\t<"+elementName+"><![CDATA["+elementText+"]]></"+elementName+">\n");
+                else
+                stringBuilder.append( "\t\t\t<"+elementName+">"+ elementText + "</"+elementName+">\n");
+            }
+        }
+
         return mainCategory;
     }
 
-    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder) {
+    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, List<NaverProductBO> attrListAttr) {
+
+        if(attrListAttr.size() > 0) {
+            stringBuilder.append( "\t\t\t\t<attrProductList>\n");
+            lowPriceProductParsing(stringBuilder, attrListAttr, false);
+            stringBuilder.append( "\t\t</attrProductList>\n");
+            stringBuilder.append( "\t\t\t</attr>\n");
+            stringBuilder.append( "\t\t\t</attrList>\n");
+            attrListAttr.clear();
+        }
+
         stringBuilder.append( "\t<lowestProductList>\n");
         lowPriceProductParsing(stringBuilder, lowProduct, false);
+        lowProduct.clear();
         stringBuilder.append( "\t</lowestProductList>\n");
 
         stringBuilder.append( "<lowestProductListByMall>\n");
         lowPriceProductParsing(stringBuilder, lowProductByMall, true);
+        lowProductByMall.clear();
         stringBuilder.append( "\t</lowestProductListByMall>\n");
 
         stringBuilder.append( "</modelProduct>\n");
@@ -220,17 +255,22 @@ public class NaverEpParserHandler extends XmlParseInterface {
     private void lowPriceProductParsing(StringBuilder stringBuilder, List<NaverProductBO> products, boolean isProductMall) {
         for( NaverProductBO product : products) {
             stringBuilder.append("\t\t<product>\n");
-            if( !isProductMall )
+            if( product.getRanking() > 0 )
                 stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
 
+            if( product.getPrice() > 0 )
             stringBuilder.append("\t\t\t<price>"+product.getPrice()+"</price>\n");
 
-            if( !isProductMall )
+            if( product.getDeliveryCost() > 0 )
                 stringBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
 
-            stringBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
-            stringBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
-            stringBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
+            if(product.getNvMid() != null )
+                stringBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
+            if(product.getMallId() != null )
+                stringBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
+            if(product.getMallPid() != null )
+                stringBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
+
             stringBuilder.append("\t\t</product>\n");
         }
     }
