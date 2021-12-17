@@ -230,7 +230,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
     private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, List<NaverProductBO> attrListAttr) {
 
-        if(attrListAttr.size() > 0) {
+        if(attrListAttr != null && attrListAttr.size() > 0) {
             stringBuilder.append( "\t\t\t\t<attrProductList>\n");
             lowPriceProductParsing(stringBuilder, attrListAttr, false);
             stringBuilder.append( "\t\t</attrProductList>\n");
