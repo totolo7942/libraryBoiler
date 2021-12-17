@@ -6,5 +6,5 @@ import java.nio.file.Path;
 
 abstract class  XmlParseInterface {
 
-    abstract void parsing(Path path) throws XMLStreamException, IOException;
+    abstract void parsing(Path path, StringBuilder stringBuilder) throws XMLStreamException, IOException;
 }

@@ -1,9 +1,8 @@
 package utils.big.reader;
 
 import org.apache.commons.lang3.time.StopWatch;
-import utils.big.reader.entity.NaverModelBO;
+import org.eclipse.persistence.exceptions.JAXBException;
 
-import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,7 +11,6 @@ import java.nio.channels.CompletionHandler;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -36,9 +34,13 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
         stopWatch.reset();
         stopWatch.start();
 
-        XmlParseInterface naverEpParser = new NaverEpParserHandler();
-        naverEpParser.parsing(path);
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modelProductList>\n");
 
+        XmlParseInterface naverEpParser = new NaverEpParserHandler();
+        naverEpParser.parsing(path, stringBuilder);
+
+        stringBuilder.append("</modelProductList>\n");
         stopWatch.stop();
         System.out.println("Stax parser : " + stopWatch);
 

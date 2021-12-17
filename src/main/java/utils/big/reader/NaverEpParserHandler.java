@@ -1,14 +1,14 @@
 package utils.big.reader;
 
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Marshaller;
+import jakarta.xml.bind.Unmarshaller;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.time.StopWatch;
+import org.eclipse.persistence.jaxb.JAXBContext;
 import utils.big.reader.defUtils.ByteTypes;
 import utils.big.reader.entity.*;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.*;
 import javax.xml.stream.events.XMLEvent;
 import java.io.*;
@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -41,7 +40,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
 
     @Override
-    public void parsing(Path path) throws XMLStreamException, IOException {
+    public void parsing(Path path, StringBuilder stringBuilder) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
         XMLOutputFactory output = XMLOutputFactory.newInstance();
         XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
@@ -50,16 +49,15 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
+        List<NaverAttrModelBO> attrListAttr = null;
         NaverProductBO productBO = null;
 
 
 //        StringBuffer stringBuilder = new StringBuffer();
-        StringBuilder stringBuilder = new StringBuilder();
 //        Map<String, String> elementMaps = new HashMap<>();
-        stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-
         int ParseBlockSize =0;
         boolean lowPriceProductMall = false;
+        boolean flag_attrList = false;
 
         stopWatch.reset();
         stopWatch.start();
@@ -70,15 +68,32 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
             ParseBlockSize = parsingXMLHeaderElement(reader, NAVER_HEADER_ELEMENTS, stringBuilder, ParseBlockSize, eventType);
 
+            /**
+             * 	private NaverProductListBO lowestProductList;
+             * 	private NaverProductListBO mallProductList;
+             * 	private NaverProductListBO lowestProductListByMall;
+             * 	private NaverAttrRootBO attrList;
+             * 	4개의 파싱 목록 종재
+             */
             if (eventType == XMLEvent.START_ELEMENT) {
+
+                if (reader.getName().getLocalPart().equals("attrProductList")) {
+                    attrListAttr = new ArrayList<>();
+                    flag_attrList = true;
+                    lowPriceProductMall = false;
+                }
+
+
                 if (reader.getName().getLocalPart().equals("lowestProductList")) {
                     lowProduct = new ArrayList<>();
                     lowPriceProductMall = false;
+                    flag_attrList = false;
                 }
 
                 if (reader.getName().getLocalPart().equals("lowestProductListByMall")) {
                     lowProductByMall = new ArrayList<>();
                     lowPriceProductMall = true;
+                    flag_attrList = false;
                 }
 
                 if (reader.getName().getLocalPart().equals("product")) {
@@ -192,22 +207,27 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
     private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder) {
         stringBuilder.append( "\t<lowestProductList>\n");
-        lowPriceProductParsing(stringBuilder, lowProduct);
+        lowPriceProductParsing(stringBuilder, lowProduct, false);
         stringBuilder.append( "\t</lowestProductList>\n");
 
         stringBuilder.append( "<lowestProductListByMall>\n");
-        lowPriceProductParsing(stringBuilder, lowProductByMall);
+        lowPriceProductParsing(stringBuilder, lowProductByMall, true);
         stringBuilder.append( "\t</lowestProductListByMall>\n");
 
         stringBuilder.append( "</modelProduct>\n");
     }
 
-    private void lowPriceProductParsing(StringBuilder stringBuilder,  List<NaverProductBO> products) {
+    private void lowPriceProductParsing(StringBuilder stringBuilder, List<NaverProductBO> products, boolean isProductMall) {
         for( NaverProductBO product : products) {
             stringBuilder.append("\t\t<product>\n");
-            stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
+            if( !isProductMall )
+                stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
+
             stringBuilder.append("\t\t\t<price>"+product.getPrice()+"</price>\n");
-            stringBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
+
+            if( !isProductMall )
+                stringBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
+
             stringBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
             stringBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
             stringBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
@@ -240,7 +260,8 @@ public class NaverEpParserHandler extends XmlParseInterface {
             if ((fileSize >= ByteTypes.GIGA_BYTE.toValue()) && (fileSize < ByteTypes.TERA_BYTE.toValue())) {
                 int maxByteSize = Math.toIntExact(fileSize / ByteTypes.MEGA_BYTE.toValue());
                 if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(1) / ByteTypes.MEGA_BYTE.toValue()) {
-                    extFileName += 1;
+//                    extFileName += 1;
+                    extFileName = 0;
                     System.out.println("### file seq " + extFileName + " , " + maxByteSize );
                 }
             }
@@ -284,13 +305,13 @@ public class NaverEpParserHandler extends XmlParseInterface {
     private void createFileXmlSpilt(List<NaverModelBO> modelBOList, int seq) {
         NaverRootBO rootBO = new NaverRootBO();
         rootBO.setModelProduct(modelBOList);
-        JAXBContext context = null;
+        jakarta.xml.bind.JAXBContext context = null;
         try {
             context = JAXBContext.newInstance(NaverRootBO.class);
             Marshaller marshaller = context.createMarshaller();
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
             marshaller.marshal(rootBO, new PrintWriter(new FileOutputStream("/Users/a1101381/naver_data/projects"+"_"+seq+".xml")));
-        } catch (JAXBException | FileNotFoundException e) {
+        } catch (FileNotFoundException | JAXBException e) {
             e.printStackTrace();
         }
 
@@ -357,7 +378,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         try {
             input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), StandardCharsets.UTF_8));
 
-            JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
+            jakarta.xml.bind.JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 
             while(input.ready()){
@@ -452,7 +473,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         InputStreamReader r = new InputStreamReader(is, Charset.defaultCharset());
         BufferedReader input = new BufferedReader(r);
 
-        JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
+        jakarta.xml.bind.JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
         Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 
         while(input.ready()){

@@ -2,7 +2,12 @@ plugins {
     id 'java'
     id 'org.graalvm.buildtools.native' version "0.9.8"
     id 'idea'
+//    id 'org.graalvm.plugin.native-image' version "0.1.0-alpha2"
 }
+
+apply plugin: 'java'
+apply plugin: 'idea'
+
 
 group 'org.example'
 version '1.0-SNAPSHOT'
@@ -13,8 +18,36 @@ repositories {
 }
 
 
-sourceCompatibility=JavaVersion.VERSION_17
-targetCompatibility=JavaVersion.VERSION_17
+sourceCompatibility=JavaVersion.VERSION_11
+targetCompatibility=JavaVersion.VERSION_11
+
+
+//jar.enabled = true
+//bootWar.enabled = true
+//war.enabled = false
+
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'utils.big.LargeXmlNaverEpReaderMain'
+        )
+    }
+}
+//application {
+//    mainClass = 'utils.big.LargeXmlNaverEpReaderMain'
+//}
 
 
 dependencies {
@@ -31,9 +64,17 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
 
     //jaxb
-    implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
-    implementation group: 'com.sun.xml.bind', name: 'jaxb-core', version: '2.3.0.1'
-    implementation group: 'com.sun.xml.bind', name: 'jaxb-impl', version: '2.3.1'
+    implementation 'com.sun.xml.bind:jaxb-core:2.3.0'
+    implementation 'com.sun.xml.bind:jaxb-impl:2.3.0'
+    implementation 'org.eclipse.persistence:org.eclipse.persistence.moxy:3.0.0'
+//    implementation 'org.glassfish.jaxb:jaxb-runtime:2.4.0-b180830.0438'
+//    implementation 'org.glassfish.jaxb:jaxb-xjc:2.4.0-b180830.0438'
+    implementation group: 'jakarta.xml.bind', name: 'jakarta.xml.bind-api', version: '3.0.1'
+
+    implementation 'com.sun.xml.bind:jaxb-impl:3.0.1'
+
+
+
 
     //legacy
     implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
@@ -53,24 +94,24 @@ graalvmNative {
     binaries {
         main {
             javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(17)
+                languageVersion = JavaLanguageVersion.of(11)
             }
 
             // Main options
             imageName = 'LargeXmlNaverEpReaderMain' // The name of the native image, defaults to the project name
             mainClass = 'utils.big.LargeXmlNaverEpReaderMain' // The main class to use, defaults to the application.mainClass
-            debug = false // Determines if debug info should be generated, defaults to false
+            debug = true // Determines if debug info should be generated, defaults to false
             verbose = true // Add verbose output, defaults to false
-            fallback = false // Sets the fallback mode of native-image, defaults to false
+            fallback = true // Sets the fallback mode of native-image, defaults to false
             sharedLibrary = false // Determines if image is a shared library, defaults to false if `java-library` plugin isn't included
 
 //            systemProperties = [GRAALVM_HOME: '/Users/a1101381/Develop/server/graalvm-ce-java17-21.3.0/Contents/Home'] // Sets the system properties to use for the native image builder
             // Advanced options
             //buildArgs.add('-H:Extra') // Passes '-H:Extra' to the native image builder options. This can be used to pass parameters which are not directly supported by this extension
-            jvmArgs.add('-Xmx6g')
+            jvmArgs.add('-cp  ')
 
             // Runtime options
-            //runtimeArgs.add('--help') // Passes '--help' to built image, during "nativeRun" task
+            runtimeArgs.add('--help') // Passes '--help' to built image, during "nativeRun" task
 
             // Development options
             agent {
@@ -91,4 +132,12 @@ nativeBuild {
 
 test {
     useJUnitPlatform()
+    testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+    }
+
+    reports {
+        junitXml.enabled = false
+        html.enabled = true
+    }
 }
