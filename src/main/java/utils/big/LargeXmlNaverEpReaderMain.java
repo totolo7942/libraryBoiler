@@ -2,6 +2,7 @@ package utils.big;
 
 import org.eclipse.persistence.exceptions.JAXBException;
 import utils.big.reader.XmlFileContextHandler;
+import utils.big.reader.defUtils.EpOperation;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.stream.Stream;
  * @author a1101381
  */
 public class LargeXmlNaverEpReaderMain {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ReactiveXmlEpReaderMain.class);
 
     public static void main(String[] args) {
         final String FILE_NAME_40G="/Users/a1101381/naver_data/naver_ep.xml";
@@ -23,7 +25,7 @@ public class LargeXmlNaverEpReaderMain {
         try {
             warmUpCleanDirectoryFiles();
 
-            new XmlFileContextHandler().read( FILE_NAME_40G);
+            new XmlFileContextHandler().read( FILE_NAME_40G, true, EpOperation.DIVIDER);
 //            new XmlFileContextHandler().legacyRead(FILE_NAME_ONE_DATA);
         } catch (IOException | InterruptedException | XMLStreamException | JAXBException e) {
             e.printStackTrace();

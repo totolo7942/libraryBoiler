@@ -7,13 +7,12 @@ import java.io.LineNumberReader;
 public class CompireFileToFileMain {
     public static void main(String[] args) throws IOException {
 
-        LineNumberReader reader1 = new LineNumberReader(new FileReader("/Users/a1101381/naver_data/naver_ep.xml"));
+//        LineNumberReader reader1 = new LineNumberReader(new FileReader("/Users/a1101381/naver_data/naver_ep.xml"));
+
+        LineNumberReader reader1 = new LineNumberReader(new FileReader("/Users/a1101381/naver_data/ndata/projects_0.xml"));
         LineNumberReader reader2 = new LineNumberReader(new FileReader("/Users/a1101381/naver_data/parse/projects_0.xml"));
 
 //        LineNumberReader reader1 = new LineNumberReader(new FileReader( "/Users/a1101381/Develop/totolo7942/git/libraryBoiler/src/main/resources/NaverEpAttrVersion.xml"));
-
-        final String name2 ="file";
-        final String name1 ="file";
 
         String line1 = reader1.readLine();
         String line2 = reader2.readLine();

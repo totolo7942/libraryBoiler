@@ -2,6 +2,7 @@ package utils.big.reader;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.persistence.exceptions.JAXBException;
+import utils.big.reader.defUtils.EpOperation;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
@@ -19,15 +20,9 @@ import java.util.concurrent.BlockingQueue;
  */
 public class XmlFileContextHandler implements CompletionHandler<Integer, BlockingQueue<Boolean>> {
 
-    final int BLOCK_SIZE =1024;
 
-    private ByteBuffer buffer;
-    private AsynchronousFileChannel channel;
-    private long position = 0;
-    BlockingQueue<Boolean> done = new ArrayBlockingQueue<>(1);
-    private final StringBuilder builder = new StringBuilder();
-
-    public void read(String fileName) throws IOException, InterruptedException, JAXBException, XMLStreamException {
+    public String read(String fileName, boolean fileWrite, EpOperation epOperation) throws IOException, InterruptedException, JAXBException, XMLStreamException {
+        System.out.println(fileName);
         Path path = Paths.get(fileName);
 //
         StopWatch stopWatch = new StopWatch();
@@ -35,10 +30,18 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
         stopWatch.start();
 
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modelProductList>\n");
+        stringBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modelProductList>\n"); //제일 첫번째 값을 넣어준다.
 
         XmlParseInterface naverEpParser = new NaverEpParserHandler();
-        naverEpParser.parsing(path, stringBuilder);
+        switch(epOperation) {
+            case PARSING:
+                    naverEpParser.parsing(path, stringBuilder, fileWrite );
+                break;
+            case DIVIDER:
+                    naverEpParser.divider(path, stringBuilder, fileWrite );
+                break;
+        }
+
         stopWatch.stop();
         System.out.println("Stax parser : " + stopWatch);
 
@@ -48,7 +51,7 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
 //        channel = AsynchronousFileChannel.open(path);
 //        channel.read(buffer, position, done, this);
 //        done.take();
-
+        return stopWatch.toString();
     }
 
     public void legacyRead(String fileName) throws JAXBException {
@@ -63,6 +66,13 @@ public class XmlFileContextHandler implements CompletionHandler<Integer, Blockin
         System.out.println("legacyRead parser :"+ stopWatch);
 
     }
+
+    ///---- NOT USED
+    private ByteBuffer buffer;
+    private AsynchronousFileChannel channel;
+    private long position = 0;
+    BlockingQueue<Boolean> done = new ArrayBlockingQueue<>(1);
+    private final StringBuilder builder = new StringBuilder();
 
     @Override
     public void completed(Integer result, BlockingQueue<Boolean> attachment) {

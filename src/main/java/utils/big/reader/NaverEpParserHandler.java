@@ -4,48 +4,49 @@ import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.persistence.jaxb.JAXBContext;
 import utils.big.reader.defUtils.ByteTypes;
+import utils.big.reader.defUtils.EpOperation;
 import utils.big.reader.entity.*;
 
-import javax.xml.stream.*;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class NaverEpParserHandler extends XmlParseInterface {
 
-    private final StringBuffer xmlTmpStr = new StringBuffer();
-    private Map<String, String> elementMaps = new ConcurrentHashMap<>();
-    private int extFileName=0;
-    boolean useAttr = false;
-
-    StopWatch stopWatch = new StopWatch();
+    private volatile int divFileSeq=0;
 
     private final List<String> NAVER_HEADER_ELEMENTS = List.of("matchNvMid", "modelType", "isPopularModel", "productName", "cateCode" ,
             "cateName", "fullCateCode", "fullCateName", "lowestPrice", "lowestPriceDevice", "productCount", "useAttr"
     );
 
     private final List<String> NAVER_HEADER_ATTR_ELEMENTS = List.of("attrName", "attrId", "attrLowestPrice", "attrProductCount");
-
+    boolean useAttr = false;
 
     @Override
-    public void parsing(Path path, StringBuilder stringBuilder) throws XMLStreamException, IOException {
+    public void divider(Path path, StringBuilder epDataBuilder, boolean fileWrite) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
         XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
         List<NaverProductBO> attrListAttr = null;
@@ -55,19 +56,19 @@ public class NaverEpParserHandler extends XmlParseInterface {
         int ParseBlockSize =0;
         boolean lowPriceProductMall = false;
         boolean flag_attrList = false;
-
-        stopWatch.reset();
-        stopWatch.start();
-
         boolean processAttribute = false;
         int attrProductDone = 0;
-        boolean attrListAttrHeader = true;
+
 
         while (reader.hasNext()) {
-            int eventType = reader.next();
+            int eventType = -1;
+            try {
+                eventType = reader.next();
+            }catch ( XMLStreamException | NullPointerException pse) {
+                System.out.println("PARSING ERROR : " + path.toFile().getAbsolutePath() + " exception : " + pse.getMessage());
+            }
 
-
-            ParseBlockSize = parsingXMLHeaderElement(reader, stringBuilder, ParseBlockSize, eventType);
+            ParseBlockSize = parsingXMLHeaderElement(reader, epDataBuilder, ParseBlockSize, eventType);
 
             /**
              * 	private NaverProductListBO lowestProductList;
@@ -79,19 +80,18 @@ public class NaverEpParserHandler extends XmlParseInterface {
             //AttrList Parsing
             if (eventType == XMLEvent.START_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("attrList")) {
-                    stringBuilder.append( "\t<attrList>\n");
+                    epDataBuilder.append( "\t<attrList>\n");
                     attrProductDone =0;
-                    attrListAttrHeader = true;
                 }
             }
 
             if (eventType == XMLEvent.START_ELEMENT) {
                 if (reader.getName().getLocalPart().equals("attr")) {
                     if( attrProductDone != 0) {
-                        stringBuilder.append("\t\t</attrProductList>\n");
-                        stringBuilder.append( "\t</attr>\n");
+                        epDataBuilder.append("\t\t</attrProductList>\n");
+                        epDataBuilder.append( "\t</attr>\n");
                     }
-                    stringBuilder.append( "\t<attr>\n");
+                    epDataBuilder.append( "\t<attr>\n");
                     processAttribute = true;
                 }
             }
@@ -103,38 +103,38 @@ public class NaverEpParserHandler extends XmlParseInterface {
                 if (NAVER_HEADER_ATTR_ELEMENTS.contains(elementName)) {
                     final String elementText = reader.getElementText();
                     if (elementName.equals("attrName")) {
-                        stringBuilder.append("\t<" + elementName + "><![CDATA[" + elementText + "]]></" + elementName + ">\n");
+                        epDataBuilder.append("\t<" + elementName + "><![CDATA[" + elementText + "]]></" + elementName + ">\n");
                     } else {
-                        stringBuilder.append("\t\t\t<" + elementName + ">" + elementText + "</" + elementName + ">\n");
+                        epDataBuilder.append("\t\t\t<" + elementName + ">" + elementText + "</" + elementName + ">\n");
                     }
                     attrProductDone++;
                 }
 
                 if (reader.getName().getLocalPart().equals("attrProductList")) {
-                    attrListAttr = new ArrayList<>();
+                    attrListAttr = Collections.synchronizedList(new ArrayList<>());
                     flag_attrList = true;
                     lowPriceProductMall=false;
-                    stringBuilder.append( "\t\t<attrProductList>\n");
+                    epDataBuilder.append( "\t\t<attrProductList>\n");
                 }
 
 
                 if (reader.getName().getLocalPart().equals("lowestProductList")) {
                     if(processAttribute) {
-                        stringBuilder.append("\t\t</attrProductList>\n");
-                        stringBuilder.append("\t\t\t</attr>\n");
-                        stringBuilder.append("\t\t\t</attrList>\n");
+                        epDataBuilder.append("\t\t</attrProductList>\n");
+                        epDataBuilder.append("\t\t\t</attr>\n");
+                        epDataBuilder.append("\t\t\t</attrList>\n");
                         processAttribute = false;
                     }else if(useAttr && !processAttribute) {
-                        stringBuilder.append("\n\t\t\t</attrList>\n");
+                        epDataBuilder.append("\n\t\t\t</attrList>\n");
                     }
 
-                    lowProduct = new ArrayList<>();
+                    lowProduct = Collections.synchronizedList(new ArrayList<>());
                     flag_attrList = false;
                     lowPriceProductMall=false;
                 }
 
                 if (reader.getName().getLocalPart().equals("lowestProductListByMall")) {
-                    lowProductByMall = new ArrayList<>();
+                    lowProductByMall = Collections.synchronizedList(new ArrayList<>());
                     lowPriceProductMall = true;
                     flag_attrList = false;
                 }
@@ -146,40 +146,151 @@ public class NaverEpParserHandler extends XmlParseInterface {
 
             parsingXMLBodyElements(reader, lowProduct, lowPriceProductMall, lowProductByMall, productBO, eventType, flag_attrList, attrListAttr);
 
-            preAttrListProduct(attrListAttr, flag_attrList, stringBuilder);
+            preAttrListProduct(attrListAttr, epDataBuilder);
 
-            ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, stringBuilder, ParseBlockSize, eventType, attrListAttr);
+            ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, epDataBuilder, ParseBlockSize, eventType, fileWrite, "projects_"+divFileSeq +".xml", EpOperation.DIVIDER );
         }
 
-        if(stringBuilder.length() > 0 ) {
-            stringBuilder.append("</modelProductList>\n");
-            nioBufferWriteToFile(stringBuilder);
+        if(epDataBuilder.length() > 0 ) {
+            epDataBuilder.append("</modelProductList>\n");
+            nioBufferWriteToFile(epDataBuilder, fileWrite, "projects_"+divFileSeq +".xml", EpOperation.DIVIDER, true);
+        }
+    }
+
+    @Override
+    public void  parsing(Path path, StringBuilder epDataBuilder, boolean fileWrite) throws XMLStreamException, IOException {
+        XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+
+        List<NaverProductBO> lowProduct = null;
+        List<NaverProductBO> lowProductByMall = null;
+        List<NaverProductBO> attrListAttr = null;
+        NaverProductBO productBO = null;
+
+
+        int ParseBlockSize =0;
+        boolean lowPriceProductMall = false;
+        boolean flag_attrList = false;
+        boolean processAttribute = false;
+        int attrProductDone = 0;
+
+        final String extFileName = path.toFile().getName();
+        while (reader.hasNext()) {
+            int eventType = -1;
+            try {
+                eventType = reader.next();
+            }catch ( XMLStreamException | NullPointerException pse) {
+                System.out.println("PARSING ERROR : " + path.toFile().getAbsolutePath() + " exception : " + pse.getMessage());
+            }
+
+            ParseBlockSize = parsingXMLHeaderElement(reader, epDataBuilder, ParseBlockSize, eventType);
+
+            /**
+             * 	private NaverProductListBO lowestProductList;
+             * 	private NaverProductListBO mallProductList;
+             * 	private NaverProductListBO lowestProductListByMall;
+             * 	private NaverAttrRootBO attrList;
+             * 	4개의 파싱 목록 종재
+             */
+            //AttrList Parsing
+            if (eventType == XMLEvent.START_ELEMENT) {
+                if (reader.getName().getLocalPart().equals("attrList")) {
+                    epDataBuilder.append( "\t<attrList>\n");
+                    attrProductDone =0;
+                }
+            }
+
+            if (eventType == XMLEvent.START_ELEMENT) {
+                if (reader.getName().getLocalPart().equals("attr")) {
+                    if( attrProductDone != 0) {
+                        epDataBuilder.append("\t\t</attrProductList>\n");
+                        epDataBuilder.append( "\t</attr>\n");
+                    }
+                    epDataBuilder.append( "\t<attr>\n");
+                    processAttribute = true;
+                }
+            }
+
+
+
+            if (eventType == XMLEvent.START_ELEMENT) {
+                String elementName = reader.getLocalName();
+                if (NAVER_HEADER_ATTR_ELEMENTS.contains(elementName)) {
+                    final String elementText = reader.getElementText();
+                    if (elementName.equals("attrName")) {
+                        epDataBuilder.append("\t<" + elementName + "><![CDATA[" + elementText + "]]></" + elementName + ">\n");
+                    } else {
+                        epDataBuilder.append("\t\t\t<" + elementName + ">" + elementText + "</" + elementName + ">\n");
+                    }
+                    attrProductDone++;
+                }
+
+                if (reader.getName().getLocalPart().equals("attrProductList")) {
+                    attrListAttr = Collections.synchronizedList(new ArrayList<>());
+                    flag_attrList = true;
+                    lowPriceProductMall=false;
+                    epDataBuilder.append( "\t\t<attrProductList>\n");
+                }
+
+
+                if (reader.getName().getLocalPart().equals("lowestProductList")) {
+                    if(processAttribute) {
+                        epDataBuilder.append("\t\t</attrProductList>\n");
+                        epDataBuilder.append("\t\t\t</attr>\n");
+                        epDataBuilder.append("\t\t\t</attrList>\n");
+                        processAttribute = false;
+                    }else if(useAttr && !processAttribute) {
+                        epDataBuilder.append("\n\t\t\t</attrList>\n");
+                    }
+
+                    lowProduct = Collections.synchronizedList(new ArrayList<>());
+                    flag_attrList = false;
+                    lowPriceProductMall=false;
+                }
+
+                if (reader.getName().getLocalPart().equals("lowestProductListByMall")) {
+                    lowProductByMall = Collections.synchronizedList(new ArrayList<>());
+                    lowPriceProductMall = true;
+                    flag_attrList = false;
+                }
+
+                if (reader.getName().getLocalPart().equals("product")) {
+                    productBO = new NaverProductBO();
+                }
+            }
+
+            parsingXMLBodyElements(reader, lowProduct, lowPriceProductMall, lowProductByMall, productBO, eventType, flag_attrList, attrListAttr);
+
+            preAttrListProduct(attrListAttr, epDataBuilder);
+
+            ParseBlockSize = parsingXMLDoneElemntToWriteFile(reader, lowProduct, lowProductByMall, epDataBuilder, ParseBlockSize, eventType, fileWrite, extFileName,EpOperation.PARSING );
+        }
+
+        if(epDataBuilder.length() >= 0 ) {
+            epDataBuilder.append("</modelProductList>\n");
+            System.out.println("is done? " + epDataBuilder.length());
+            nioBufferWriteToFile(epDataBuilder, fileWrite, extFileName,EpOperation.PARSING, true);
         }
 
     }
 
-    private void preAttrListProduct(List<NaverProductBO> attrListAttr, boolean flag_attrList, StringBuilder stringBuilder){
+    private void preAttrListProduct(List<NaverProductBO> attrListAttr, StringBuilder epDataBuilder){
         if(attrListAttr != null && attrListAttr.size() > 0) {
-            lowPriceProductParsing(stringBuilder, attrListAttr);
+            lowPriceProductParsing(epDataBuilder, attrListAttr);
             attrListAttr.clear();
         }
     }
 
-    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, int ParseBlockSize, int eventType, List<NaverProductBO> attrListAttr) throws IOException {
+    private int parsingXMLDoneElemntToWriteFile(XMLStreamReader reader, List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder epDataBuilder, int ParseBlockSize, int eventType, boolean fileWrite, String extFileName, EpOperation epOperation) throws IOException {
         if (eventType == XMLEvent.END_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
-                doneMainXMLBlockedAppend(lowProduct, lowProductByMall, stringBuilder, attrListAttr);
+                doneMainXMLBlockedAppend(lowProduct, lowProductByMall, epDataBuilder);
 
                 final int ELEMENT_OVERFLOW_LIMIT_COUNT = 5000; //Time:0:00:28.060, 40G:0:08:47.128
                 if(ParseBlockSize > ELEMENT_OVERFLOW_LIMIT_COUNT) {
-                    stopWatch.reset();
-                    stopWatch.start();
-                    nioBufferWriteToFile(stringBuilder);
-                    stopWatch.stop();
-                    System.out.println("append build : " + stopWatch);
-
+                    nioBufferWriteToFile(epDataBuilder, fileWrite, extFileName, epOperation,false);
                     ParseBlockSize =0;
-                    stringBuilder.setLength(0);
+                    epDataBuilder.setLength(0);
                 }
             }
         }
@@ -238,11 +349,11 @@ public class NaverEpParserHandler extends XmlParseInterface {
         }
     }
 
-    private int parsingXMLHeaderElement(XMLStreamReader reader, StringBuilder stringBuilder, int mainCategory, int eventType) throws XMLStreamException {
+    private int parsingXMLHeaderElement(XMLStreamReader reader, StringBuilder epDataBuilder, int mainCategory, int eventType) throws XMLStreamException {
         if (eventType == XMLEvent.START_ELEMENT) {
             if (reader.getName().getLocalPart().equals("modelProduct")) {
-                stringBuilder.append( "<modelProduct>\n");
                 mainCategory += 1;
+                epDataBuilder.append( "<modelProduct>\n");
             }
         }
 
@@ -251,9 +362,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
             if (NAVER_HEADER_ELEMENTS.contains(elementName)) {
                 final String elementText = reader.getElementText();
                 if(elementName.equals("productName") || elementName.equals("cateName") || elementName.equals("fullCateCode") || elementName.equals("fullCateName")) {
-                    stringBuilder.append("\t<" + elementName + "><![CDATA[" + elementText + "]]></" + elementName + ">\n");
+                    epDataBuilder.append("\t<" + elementName + "><![CDATA[" + elementText + "]]></" + elementName + ">\n");
                 }else {
-                    stringBuilder.append("\t<" + elementName + ">" + elementText + "</" + elementName + ">\n");
+                    epDataBuilder.append("\t<" + elementName + ">" + elementText + "</" + elementName + ">\n");
                     if(elementName.equals("useAttr"))
                         useAttr = elementText.equalsIgnoreCase("true");
                 }
@@ -263,7 +374,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         return mainCategory;
     }
 
-    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder, List<NaverProductBO> attrListAttr) {
+    private void doneMainXMLBlockedAppend(List<NaverProductBO> lowProduct, List<NaverProductBO> lowProductByMall, StringBuilder stringBuilder) {
 
 
         stringBuilder.append( "\t<lowestProductList>\n");
@@ -305,26 +416,26 @@ public class NaverEpParserHandler extends XmlParseInterface {
             stringBuilder.append("\n");
     }
 
-    private void lowPriceProductMallParsing(StringBuilder stringBuilder, List<NaverProductBO> products) {
+    private void lowPriceProductMallParsing(StringBuilder epDataBuilder, List<NaverProductBO> products) {
         for( NaverProductBO product : products) {
-            stringBuilder.append("\t\t<product>\n");
+            epDataBuilder.append("\t\t<product>\n");
             if( product.getRanking() > 0 )
-                stringBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
+                epDataBuilder.append("\t\t\t<ranking>"+product.getRanking()+"</ranking>\n");
 
             if( product.getPrice() > 0 )
-                stringBuilder.append("\t\t\t<price>"+product.getPrice()+"</price>\n");
+                epDataBuilder.append("\t\t\t<price>"+product.getPrice()+"</price>\n");
 
             if( product.getDeliveryCost() > 0 )
-                stringBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
+                epDataBuilder.append("\t\t\t<deliveryCost>"+product.getDeliveryCost()+"</deliveryCost>\n");
 
             if(product.getNvMid() != null )
-                stringBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
+                epDataBuilder.append("\t\t\t<nvMid>"+product.getNvMid()+"</nvMid>\n");
             if(product.getMallId() != null )
-                stringBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
+                epDataBuilder.append("\t\t\t<mallId>"+product.getMallId()+"</mallId>\n");
             if(product.getMallPid() != null )
-                stringBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
+                epDataBuilder.append("\t\t\t<mallPid>"+product.getMallPid()+"</mallPid>\n");
 
-            stringBuilder.append("\t\t</product>\n");
+            epDataBuilder.append("\t\t</product>\n");
         }
     }
 
@@ -333,44 +444,66 @@ public class NaverEpParserHandler extends XmlParseInterface {
 //    long gigabyte = megabyte * 1024;
 //    long terabyte = gigabyte * 1024;
 
-    private void nioBufferWriteToFile(StringBuilder stringBuilder) throws IOException {
-        Path path = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
+    private void nioBufferWriteToFile(StringBuilder epDataBuilder, boolean fileWrite, String extFileName, EpOperation epOperation, boolean isDone) throws IOException {
+        if(!fileWrite)
+            return;
+
+        Path path = Paths.get("/Users/a1101381/naver_data/parse/"+extFileName);
         try {
             Files.createFile(path);
         }catch(Exception ignored) {}
 
-//        long fileSize = Files.size(path);
-//        if ((fileSize >= gigabyte) && (fileSize < terabyte)) {
-//            int maxByteSize = Math.toIntExact(fileSize / megabyte);
-//            if( maxByteSize > 1000) {
-//                extFileName += 1;
-//                System.out.println("### file seq " + extFileName + " , " + maxByteSize );
-//            }
-//        }
-
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
             long fileSize = channel.size();
+
             if ((fileSize >= ByteTypes.GIGA_BYTE.toValue()) && (fileSize < ByteTypes.TERA_BYTE.toValue())) {
                 int maxByteSize = Math.toIntExact(fileSize / ByteTypes.MEGA_BYTE.toValue());
-                if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(1) / ByteTypes.MEGA_BYTE.toValue()) {
-//                    extFileName += 1;
-                    extFileName = 0;
-                    System.out.println("### file seq " + extFileName + " , " + maxByteSize );
+                if( maxByteSize > ByteTypes.GIGA_BYTE.toByteValue(1) / ByteTypes.MEGA_BYTE.toValue() || isDone) {
+
+                    //마지막에 무조건 완성형 XML을 만들어야 되서 넣어준다. //파일(XML)만 아니면 빼도 상관 없는데 삽질.
+                    if( !isDone) {
+                        Path firstPath = Path.of("/Users/a1101381/naver_data/parse/" + extFileName);
+                        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(firstPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                            bufferedWriter.write("</modelProductList>\n");
+                            bufferedWriter.flush();
+                            System.out.println(firstPath.toFile().getAbsolutePath() + " DONE! " + epDataBuilder.length());
+                        }
+                    }
+
+                    if(epOperation.equals(EpOperation.DIVIDER)) {
+                        divFileSeq += 1;
+                        extFileName = "projects_"+divFileSeq+".xml";
+                    }
+
+
+                    System.out.println("### file seq " + extFileName + " , " + maxByteSize + " fileName :  " + path.toFile().getAbsolutePath());
                 }
             }
         }
-        Path wpath = Paths.get("/Users/a1101381/naver_data/parse/projects_"+extFileName+".xml");
+
+        //시작점에 무조건 완성형 XML을 만들어야 되서 넣어준다. //파일(XML)만 아니면 빼도 상관 없는데 삽질.
+        Path firstPath = Path.of("/Users/a1101381/naver_data/parse/"+extFileName);
+        if( !firstPath.toFile().exists() && firstPath.toFile().length() ==0 ) {
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter( firstPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                bufferedWriter.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modelProductList>\n");
+                bufferedWriter.flush();
+                System.out.println("first write append xml header :" + firstPath.toFile().getAbsolutePath());
+            }
+        }
+
+        Path wpath = Paths.get("/Users/a1101381/naver_data/parse/"+extFileName);
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(wpath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            bufferedWriter.write(stringBuilder.toString());
+            bufferedWriter.write(epDataBuilder.toString());
             bufferedWriter.flush();
         }
 
         //Stax parser : 0:11:14.460 write 방식
 //        FileChannel fileOut = new FileOutputStream(path.toFile(), true).getChannel();
-//        fileOut.write(ByteBuffer.wrap(stringBuilder.toString().getBytes(StandardCharsets.UTF_8)));
+//        fileOut.write(ByteBuffer.wrap(epDataBuilder.toString().getBytes(StandardCharsets.UTF_8)));
 //        fileOut.close();
     }
 
+    private Map<String, String> elementMaps = new ConcurrentHashMap<>();
     private void parseHeaderElement(List<NaverProductBO> product, List<NaverModelBO> modelBOList) {
         NaverModelBO modelBO = new NaverModelBO();
         modelBO.setMatchNvMid(elementMaps.get("matchNvMid"));
@@ -460,8 +593,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
     private final String XML_ELEMENT = "modelProduct";
     private final ThreadLocal<StringBuffer> xmlElementStr = ThreadLocal.withInitial(StringBuffer::new);
     private BlockingQueue<List<CollectBO>> naverLumpQueue;
-
-
+    private final StringBuffer xmlTmpStr = new StringBuffer();
     public void lineParser(final String fileNamePath ) {
         List<CollectBO> resultList = new ArrayList<CollectBO>();
         boolean isCompleted = true;
@@ -469,7 +601,7 @@ public class NaverEpParserHandler extends XmlParseInterface {
         BufferedReader input;
 
         try {
-            input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), StandardCharsets.UTF_8));
+            input = new BufferedReader(new InputStreamReader(new FileInputStream(fileNamePath), UTF_8));
 
             jakarta.xml.bind.JAXBContext jaxbContext = JAXBContext.newInstance(NaverRootBO.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
