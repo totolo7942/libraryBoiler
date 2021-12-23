@@ -18,8 +18,8 @@ repositories {
 }
 
 
-sourceCompatibility=JavaVersion.VERSION_11
-targetCompatibility=JavaVersion.VERSION_11
+sourceCompatibility=JavaVersion.VERSION_17
+targetCompatibility=JavaVersion.VERSION_17
 
 
 //jar.enabled = true
@@ -51,6 +51,13 @@ jar {
 
 
 dependencies {
+
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    implementation 'org.slf4j:slf4j-simple:1.7.30'
+
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.0'
@@ -67,22 +74,23 @@ dependencies {
     implementation 'com.sun.xml.bind:jaxb-core:2.3.0'
     implementation 'com.sun.xml.bind:jaxb-impl:2.3.0'
     implementation 'org.eclipse.persistence:org.eclipse.persistence.moxy:3.0.0'
-//    implementation 'org.glassfish.jaxb:jaxb-runtime:2.4.0-b180830.0438'
-//    implementation 'org.glassfish.jaxb:jaxb-xjc:2.4.0-b180830.0438'
     implementation group: 'jakarta.xml.bind', name: 'jakarta.xml.bind-api', version: '3.0.1'
 
     implementation 'com.sun.xml.bind:jaxb-impl:3.0.1'
-
-
-
 
     //legacy
     implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
     implementation group: 'com.jamesmurty.utils', name: 'java-xmlbuilder', version: '1.3'
 
-
     //json
     implementation 'com.google.code.gson:gson:2.8.9'
+
+    // import BOM
+    implementation platform('io.projectreactor:reactor-bom:2020.0.14')
+    // add dependencies without a version number
+//    implementation 'io.projectreactor:reactor-core'
+    implementation 'io.reactivex.rxjava3:rxjava:3.0.7'
+
 }
 
 tasks.withType(org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask).configureEach {
@@ -94,12 +102,12 @@ graalvmNative {
     binaries {
         main {
             javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(11)
+                languageVersion = JavaLanguageVersion.of(17)
             }
 
             // Main options
-            imageName = 'LargeXmlNaverEpReaderMain' // The name of the native image, defaults to the project name
-            mainClass = 'utils.big.LargeXmlNaverEpReaderMain' // The main class to use, defaults to the application.mainClass
+            imageName = 'ReactiveXmlEpReaderMain' // The name of the native image, defaults to the project name
+            mainClass = 'utils.big.ReactiveXmlEpReaderMain' // The main class to use, defaults to the application.mainClass
             debug = true // Determines if debug info should be generated, defaults to false
             verbose = true // Add verbose output, defaults to false
             fallback = true // Sets the fallback mode of native-image, defaults to false
@@ -108,10 +116,10 @@ graalvmNative {
 //            systemProperties = [GRAALVM_HOME: '/Users/a1101381/Develop/server/graalvm-ce-java17-21.3.0/Contents/Home'] // Sets the system properties to use for the native image builder
             // Advanced options
             //buildArgs.add('-H:Extra') // Passes '-H:Extra' to the native image builder options. This can be used to pass parameters which are not directly supported by this extension
-            jvmArgs.add('-cp  ')
+//            jvmArgs.add('-cp  ')
 
             // Runtime options
-            runtimeArgs.add('--help') // Passes '--help' to built image, during "nativeRun" task
+//            runtimeArgs.add('--help') // Passes '--help' to built image, during "nativeRun" task
 
             // Development options
             agent {
@@ -124,8 +132,8 @@ graalvmNative {
 }
 
 nativeBuild {
-    imageName = "LargeXmlNaverEpReaderMain"
-    mainClass = "utils.big.LargeXmlNaverEpReaderMain"
+    imageName = "ReactiveXmlEpReaderMain"
+    mainClass = "utils.big.ReactiveXmlEpReaderMain"
     verbose = true
     fallback = false
 }
