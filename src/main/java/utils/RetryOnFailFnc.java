@@ -12,14 +12,13 @@ public class RetryOnFailFnc {
     private final static Logger log = Logger.getGlobal();
 
     @SafeVarargs
-    public static <T> void retry(Supplier<T> function, int maxRetries, Class<? extends Exception>... exceptionClazz) {
+    public static <T> T retry(Supplier<T> function, int maxRetries, Class<? extends Exception>... exceptionClazz) {
         int retryCounter = 0;
         Exception lastException = null;
 
         while (retryCounter < maxRetries) {
             try {
-                function.get();
-                return;
+                return function.get();
             } catch (Exception e) {
                 lastException = e;
                 if (Arrays.stream(exceptionClazz).noneMatch(tClass -> tClass.isAssignableFrom(e.getClass()))) {
