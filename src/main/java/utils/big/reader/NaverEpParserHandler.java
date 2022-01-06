@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 import java.io.*;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
@@ -45,7 +46,9 @@ public class NaverEpParserHandler extends XmlParseInterface {
     @Override
     public void divider(Path path, StringBuilder epDataBuilder, boolean fileWrite) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://172.28.114.137/epdata/projects_0.xml").openConnection().getInputStream());
+
+//        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
 
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
@@ -160,7 +163,8 @@ public class NaverEpParserHandler extends XmlParseInterface {
     @Override
     public void  parsing(Path path, StringBuilder epDataBuilder, boolean fileWrite) throws XMLStreamException, IOException {
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+//        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new FileInputStream(path.toFile()));
+        XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(new URL("http://172.28.114.137/epdata/projects_0.xml").openConnection().getInputStream());
 
         List<NaverProductBO> lowProduct = null;
         List<NaverProductBO> lowProductByMall = null;
